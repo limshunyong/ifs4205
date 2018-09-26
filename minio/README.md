@@ -1,14 +1,20 @@
-###Run Minio Server
-    ./ifsminio server \minio
+### Run Minio Server
+```
+./ifsminio server \minio
+```
 Resource: https://docs.minio.io/docs/minio-quickstart-guide.html
 
-###Run Minio Client
-    ./mc COMMAND TARGET
-    
-####List Bucket and Objects
-    ./mc ls ifsminio
+### Run Minio Client
+```
+./mc COMMAND TARGET
+```
 
-####Find an Object
-    ./mc find ifsminio/BUCKETNAME OBJECTNAME
-    
+#### List Bucket and Objects
+```
+./mc ls ifsminio
+```
+#### Find an Object
+```
+./mc find ifsminio/BUCKETNAME OBJECTNAME
+```
 More: https://docs.minio.io/docs/minio-client-complete-guide
