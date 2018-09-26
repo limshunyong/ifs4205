@@ -18,5 +18,5 @@ ifs_4205_sql:latest \
 
 # Get Bash in Container
 ```
-docker exec -it ifs_4205_sql bash
+docker exec -it ifs_4205_mysql_db bash
 ```
