@@ -8,3 +8,6 @@
 ehthumbs.db
 Thumbs.db
 
+python3.6/
+*.pyc
+db.sqlite3
