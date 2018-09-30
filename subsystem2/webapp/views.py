@@ -72,4 +72,12 @@ def patient_record_view(request, record_id):
         'user': request.user,
         'record_id':  record_id
     }
-    return render(request, 'patient_record.html', context)
+
+    if record_id == "1":
+        return render(request, 'patient_record_bp.html', context)
+    elif record_id == "2":
+        return render(request, 'patient_record_image.html', context)
+    elif record_id == "3":
+        return render(request, 'patient_record_movie.html', context)
+    else:
+        return render(request, 'patient_index.html', context)
