@@ -79,6 +79,7 @@ class HealthData(models.Model):
     # TODO add types to categories
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE)
     type = models.IntegerField(choices=TYPE_CHOICES, default=TYPE_BP)
     title = models.CharField(max_length=100, blank=True)
     description = models.CharField(max_length=1000, blank=True)
@@ -104,5 +105,5 @@ class UserProfile(models.Model):
     }
     user = models.OneToOneField(DjangoUser, on_delete=models.CASCADE)
     role = models.IntegerField(choices=ROLE_CHOICES, default=ROLE_PATIENT)
-    patient = models.ForeignKey(Patient, blank=True, on_delete=models.CASCADE)
-    therapist = models.ForeignKey(Therapist, blank=True, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, blank=True, null=True, on_delete=models.CASCADE)
+    therapist = models.ForeignKey(Therapist, blank=True, null=True, on_delete=models.CASCADE)

@@ -54,18 +54,20 @@ def logout_view(request):
 
 
 @login_required
-def patient_index_view(request):
-    record_list = HealthData.objects.all()
-    
-    print(record_list)
+def patient_index_view(request, type=None):
+    # TODO add pagination
+    patient = request.user.userprofile.patient
+    records = HealthData.objects.filter(patient=patient, type=type)
+    print(records)
     context = {
         'user': request.user,
-        'record_list': record_list
+        'type': type,
+        'records': records
     }
     return render(request, 'patient_index.html', context)
 
 @login_required
-def patient_record_view(request, record_id):
+def patient_record_view(request):
     print(record_id)
 
     context = {
@@ -73,6 +75,7 @@ def patient_record_view(request, record_id):
         'record_id':  record_id
     }
 
+    # hardcoded value for the first demo. to be removed
     if record_id == "1":
         return render(request, 'patient_record_bp.html', context)
     elif record_id == "2":
