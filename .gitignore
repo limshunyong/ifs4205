@@ -9,5 +9,6 @@ ehthumbs.db
 Thumbs.db
 
 python3.6/
+python3/
 *.pyc
 db.sqlite3
