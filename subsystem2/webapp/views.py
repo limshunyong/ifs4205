@@ -16,8 +16,50 @@ from django.db.models import Count, Sum, Q
 from django.utils.decorators import method_decorator
 from django.core.paginator import Paginator
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 
+from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile
+
 def login_view(request, next=None):
-    return render(request, "login.html")
+	next_url = request.GET.get('next')
+	if request.method == 'POST':
+		username = request.POST['username']
+		password = request.POST['password']
+		user = authenticate(request, username=username, password=password)
+		if user is not None:
+			login(request, user)
+			if next_url is not None:
+				return redirect(next_url)
+			else:
+				return redirect("/web/patient/index/")
+		else:
+			context = {
+				'next': next_url,
+				'error_msg': "Wrong username or password."
+			}
+			return render(request, "login.html", context)
+	else:
+		context = {
+			'next': next_url,
+			'error_msg': None
+		}
+		return render(request, "login.html", context)
+
+
+def logout_view(request):
+	logout(request)
+	return redirect("/web/login/")
+
+
+@login_required
+def patient_index_view(request):
+    record_list = HealthData.objects.all()
+    
+    print(record_list)
+    context = {
+        'user': request.user,
+        'record_list': record_list
+    }
+    return render(request, 'patient_index.html', context)
