@@ -23,43 +23,64 @@ from django.contrib import messages
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile
 
 def login_view(request, next=None):
-	next_url = request.GET.get('next')
-	if request.method == 'POST':
-		username = request.POST['username']
-		password = request.POST['password']
-		user = authenticate(request, username=username, password=password)
-		if user is not None:
-			login(request, user)
-			if next_url is not None:
-				return redirect(next_url)
-			else:
-				return redirect("/web/patient/index/")
-		else:
-			context = {
-				'next': next_url,
-				'error_msg': "Wrong username or password."
-			}
-			return render(request, "login.html", context)
-	else:
-		context = {
-			'next': next_url,
-			'error_msg': None
-		}
-		return render(request, "login.html", context)
+    next_url = request.GET.get('next')
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            if next_url is not None:
+                return redirect(next_url)
+            else:
+                return redirect("/web/patient/index/")
+        else:
+            context = {
+                'next': next_url,
+                'error_msg': "Wrong username or password."
+            }
+            return render(request, "login.html", context)
+    else:
+        context = {
+            'next': next_url,
+            'error_msg': None
+        }
+        return render(request, "login.html", context)
 
 
 def logout_view(request):
-	logout(request)
-	return redirect("/web/login/")
+    logout(request)
+    return redirect("/web/login/")
 
 
 @login_required
-def patient_index_view(request):
-    record_list = HealthData.objects.all()
-    
-    print(record_list)
+def patient_index_view(request, type=None):
+    # TODO add pagination
+    patient = request.user.userprofile.patient
+    records = HealthData.objects.filter(patient=patient, type=type)
+    print(records)
     context = {
         'user': request.user,
-        'record_list': record_list
+        'type': type,
+        'records': records
     }
     return render(request, 'patient_index.html', context)
+
+@login_required
+def patient_record_view(request):
+    print(record_id)
+
+    context = {
+        'user': request.user,
+        'record_id':  record_id
+    }
+
+    # hardcoded value for the first demo. to be removed
+    if record_id == "1":
+        return render(request, 'patient_record_bp.html', context)
+    elif record_id == "2":
+        return render(request, 'patient_record_image.html', context)
+    elif record_id == "3":
+        return render(request, 'patient_record_movie.html', context)
+    else:
+        return render(request, 'patient_index.html', context)

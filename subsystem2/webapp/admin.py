@@ -32,7 +32,7 @@ class AdminUserModel(UserAdmin):
 	list_select_related = ('userprofile', )
 	
 	def get_role(self, instance):
-		return UserProfile.ROLE_CHOICES[instance.userprofile.role][1]
+		return instance.userprofile.role
 	get_role.short_description = 'Role'
 
 # Re-register UserAdmin
