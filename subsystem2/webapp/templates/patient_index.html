@@ -1,25 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p>Welcome back, {{ user.username }}</p>
-<a href="/web/logout/">Logout</a>
+{% include "./records_table.html" %}
 
-<table style="width:100%">
-    <tr>
-        <th>ID</th>
-        <th>Type</th>
-        <th>Title</th>
-        <th>Description</th>
-        <th>Date</th>
-    </tr>
-    {% for r in record_list %}
-        <tr>
-            <td>{{ r.id }}</td>
-            <td>{{ r.type }}</td>
-            <td>{{ r.title }}</td>
-            <td>{{ r.description }}</td>
-            <td>{{ r.date }}</td>
-        </tr>
-    {% endfor %}
 
 {% endblock %}
