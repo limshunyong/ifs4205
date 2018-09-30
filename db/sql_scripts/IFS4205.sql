@@ -1,194 +1,302 @@
--- MySQL dump 10.13  Distrib 8.0.12, for macos10.13 (x86_64)
---
--- Host: ifs4205-t2-3-i.comp.nus.edu.sg    Database: ifs4205
--- ------------------------------------------------------
--- Server version	8.0.12
+-- we don't know how to generate schema ifs4205 (class Schema) :(
+create table if not exists auth_group
+(
+	id int auto_increment
+		primary key,
+	name varchar(80) not null,
+	constraint name
+		unique (name)
+)
+;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
- SET NAMES utf8 ;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+create table if not exists auth_user
+(
+	id int auto_increment
+		primary key,
+	password varchar(128) not null,
+	last_login datetime(6) null,
+	is_superuser tinyint(1) not null,
+	username varchar(150) not null,
+	first_name varchar(30) not null,
+	last_name varchar(150) not null,
+	email varchar(254) not null,
+	is_staff tinyint(1) not null,
+	is_active tinyint(1) not null,
+	date_joined datetime(6) not null,
+	constraint username
+		unique (username)
+)
+;
 
---
--- Table structure for table `Health_Data`
---
+create table if not exists auth_user_groups
+(
+	id int auto_increment
+		primary key,
+	user_id int not null,
+	group_id int not null,
+	constraint auth_user_groups_user_id_group_id_94350c0c_uniq
+		unique (user_id, group_id),
+	constraint auth_user_groups_group_id_97559544_fk_auth_group_id
+		foreign key (group_id) references auth_group (id),
+	constraint auth_user_groups_user_id_6a12ed8b_fk_auth_user_id
+		foreign key (user_id) references auth_user (id)
+)
+;
 
-DROP TABLE IF EXISTS `Health_Data`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Health_Data` (
-  `Data_ID` int(11) NOT NULL,
-  `Patient_ID` int(11) DEFAULT NULL,
-  `Therapist_ID` int(11) DEFAULT NULL,
-  `Category` varchar(45) DEFAULT NULL,
-  `Health_Data_Type` varchar(45) DEFAULT NULL,
-  `Name` varchar(255) DEFAULT NULL,
-  `Date` datetime DEFAULT NULL,
-  `Data` text,
-  `Patient_Can_View` tinyint(4) DEFAULT NULL,
-  PRIMARY KEY (`Data_ID`),
-  KEY `Patient_ID_5_idx` (`Patient_ID`),
-  KEY `Therapist_ID_4_idx` (`Therapist_ID`),
-  CONSTRAINT `Patient_ID_5` FOREIGN KEY (`Patient_ID`) REFERENCES `Patient` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `Therapist_ID_4` FOREIGN KEY (`Therapist_ID`) REFERENCES `Therapist` (`therapist_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists django_content_type
+(
+	id int auto_increment
+		primary key,
+	app_label varchar(100) not null,
+	model varchar(100) not null,
+	constraint django_content_type_app_label_model_76bd3d3b_uniq
+		unique (app_label, model)
+)
+;
 
---
--- Table structure for table `Is_a_Patient_of`
---
+create table if not exists auth_permission
+(
+	id int auto_increment
+		primary key,
+	name varchar(255) not null,
+	content_type_id int not null,
+	codename varchar(100) not null,
+	constraint auth_permission_content_type_id_codename_01ab375a_uniq
+		unique (content_type_id, codename),
+	constraint auth_permission_content_type_id_2f476e4b_fk_django_co
+		foreign key (content_type_id) references django_content_type (id)
+)
+;
 
-DROP TABLE IF EXISTS `Is_a_Patient_of`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Is_a_Patient_of` (
-  `ID` int(11) NOT NULL,
-  `Patient_ID` int(11) NOT NULL,
-  `Therapist_ID` int(11) NOT NULL,
-  PRIMARY KEY (`ID`),
-  KEY `Patient_ID_idx` (`Patient_ID`),
-  KEY `Therapist_ID_idx` (`Therapist_ID`),
-  CONSTRAINT `Patient_ID_1` FOREIGN KEY (`Patient_ID`) REFERENCES `Patient` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `Therapist_ID_1` FOREIGN KEY (`Therapist_ID`) REFERENCES `Therapist` (`therapist_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists auth_group_permissions
+(
+	id int auto_increment
+		primary key,
+	group_id int not null,
+	permission_id int not null,
+	constraint auth_group_permissions_group_id_permission_id_0cd325b0_uniq
+		unique (group_id, permission_id),
+	constraint auth_group_permissio_permission_id_84c5c92e_fk_auth_perm
+		foreign key (permission_id) references auth_permission (id),
+	constraint auth_group_permissions_group_id_b120cbf9_fk_auth_group_id
+		foreign key (group_id) references auth_group (id)
+)
+;
 
---
--- Table structure for table `Patient`
---
+create table if not exists auth_user_user_permissions
+(
+	id int auto_increment
+		primary key,
+	user_id int not null,
+	permission_id int not null,
+	constraint auth_user_user_permissions_user_id_permission_id_14a6b632_uniq
+		unique (user_id, permission_id),
+	constraint auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm
+		foreign key (permission_id) references auth_permission (id),
+	constraint auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id
+		foreign key (user_id) references auth_user (id)
+)
+;
 
-DROP TABLE IF EXISTS `Patient`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Patient` (
-  `Patient_ID` int(11) NOT NULL,
-  `Patient_Name` varchar(255) DEFAULT NULL,
-  `NRIC` varchar(9) DEFAULT NULL,
-  `Gender` varchar(6) DEFAULT NULL,
-  `Address` varchar(255) DEFAULT NULL,
-  `Contact_Number` varchar(12) DEFAULT NULL,
-  `Date_of_Birth` datetime DEFAULT NULL,
-  PRIMARY KEY (`Patient_ID`),
-  CONSTRAINT `Patient_ID` FOREIGN KEY (`Patient_ID`) REFERENCES `Patient_Account` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists django_admin_log
+(
+	id int auto_increment
+		primary key,
+	action_time datetime(6) not null,
+	object_id longtext null,
+	object_repr varchar(200) not null,
+	action_flag smallint(5) unsigned not null,
+	change_message longtext not null,
+	content_type_id int null,
+	user_id int not null,
+	constraint django_admin_log_content_type_id_c4bce8eb_fk_django_co
+		foreign key (content_type_id) references django_content_type (id),
+	constraint django_admin_log_user_id_c564eba6_fk_auth_user_id
+		foreign key (user_id) references auth_user (id)
+)
+;
 
---
--- Table structure for table `Patient_Account`
---
+create table if not exists django_migrations
+(
+	id int auto_increment
+		primary key,
+	app varchar(255) not null,
+	name varchar(255) not null,
+	applied datetime(6) not null
+)
+;
 
-DROP TABLE IF EXISTS `Patient_Account`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Patient_Account` (
-  `Patient_ID` int(11) NOT NULL,
-  `Username` varchar(45) DEFAULT NULL,
-  `Password` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`Patient_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists django_session
+(
+	session_key varchar(40) not null
+		primary key,
+	session_data longtext not null,
+	expire_date datetime(6) not null
+)
+;
 
---
--- Table structure for table `Therapist`
---
+create index django_session_expire_date_a5c62663
+	on django_session (expire_date)
+;
 
-DROP TABLE IF EXISTS `Therapist`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Therapist` (
-  `Therapist_ID` int(11) NOT NULL,
-  `Therapist_Name` varchar(255) DEFAULT NULL,
-  `Designation` varchar(45) DEFAULT NULL,
-  `Department` varchar(45) DEFAULT NULL,
-  `Contact_Number` varchar(12) DEFAULT NULL,
-  PRIMARY KEY (`Therapist_ID`),
-  CONSTRAINT `Therapist_ID` FOREIGN KEY (`Therapist_ID`) REFERENCES `Therapist_Account` (`therapist_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists webapp_patient
+(
+	id int auto_increment
+		primary key,
+	name varchar(100) not null,
+	nric varchar(9) not null,
+	gender varchar(6) not null,
+	address varchar(100) not null,
+	contact_number varchar(12) not null,
+	date_of_birth datetime(6) not null
+)
+;
 
---
--- Table structure for table `Therapist_Account`
---
+create table if not exists webapp_healthdata
+(
+	id int auto_increment
+		primary key,
+	type int not null,
+	title varchar(100) not null,
+	description varchar(1000) not null,
+	date datetime(6) not null,
+	patient_id int not null,
+	constraint webapp_healthdata_patient_id_a5dc55b7_fk_webapp_patient_id
+		foreign key (patient_id) references webapp_patient (id)
+)
+;
 
-DROP TABLE IF EXISTS `Therapist_Account`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Therapist_Account` (
-  `Therapist_ID` int(11) NOT NULL,
-  `Username` varchar(45) DEFAULT NULL,
-  `Password` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`Therapist_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists webapp_healthdatapermission
+(
+	id int auto_increment
+		primary key,
+	has_access tinyint(1) not null,
+	date datetime(6) not null,
+	health_data_id int not null,
+	constraint webapp_healthdataper_health_data_id_fbc18989_fk_webapp_he
+		foreign key (health_data_id) references webapp_healthdata (id)
+)
+;
 
---
--- Table structure for table `Visit_Record`
---
+create table if not exists webapp_healthdatapermission_patients
+(
+	id int auto_increment
+		primary key,
+	healthdatapermission_id int not null,
+	patient_id int not null,
+	constraint webapp_healthdatapermiss_healthdatapermission_id__43364bb8_uniq
+		unique (healthdatapermission_id, patient_id),
+	constraint webapp_healthdataper_healthdatapermission_d195a448_fk_webapp_he
+		foreign key (healthdatapermission_id) references webapp_healthdatapermission (id),
+	constraint webapp_healthdataper_patient_id_b8920c57_fk_webapp_pa
+		foreign key (patient_id) references webapp_patient (id)
+)
+;
 
-DROP TABLE IF EXISTS `Visit_Record`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Visit_Record` (
-  `Visit_ID` int(11) NOT NULL,
-  `Patient_ID` int(11) NOT NULL,
-  `Therapist_ID` int(11) NOT NULL,
-  `Visit_Date` datetime DEFAULT NULL,
-  PRIMARY KEY (`Visit_ID`),
-  KEY `Patient_ID_3_idx` (`Patient_ID`),
-  KEY `Therapist_ID_2_idx` (`Therapist_ID`),
-  CONSTRAINT `Patient_ID_3` FOREIGN KEY (`Patient_ID`) REFERENCES `Patient` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `Therapist_ID_2` FOREIGN KEY (`Therapist_ID`) REFERENCES `Therapist` (`therapist_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists webapp_researcher
+(
+	id int auto_increment
+		primary key,
+	name varchar(100) not null,
+	institution varchar(100) not null
+)
+;
 
---
--- Table structure for table `Ward`
---
+create table if not exists webapp_therapist
+(
+	id int auto_increment
+		primary key,
+	name varchar(100) not null,
+	designation varchar(45) not null,
+	department varchar(45) not null,
+	contact_number varchar(12) not null
+)
+;
 
-DROP TABLE IF EXISTS `Ward`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Ward` (
-  `Ward_ID` int(11) NOT NULL,
-  `Ward_Name` varchar(45) DEFAULT NULL,
-  PRIMARY KEY (`Ward_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists webapp_isapatientof
+(
+	id int auto_increment
+		primary key,
+	has_read_access tinyint(1) not null,
+	has_write_access tinyint(1) not null,
+	patient_id int not null,
+	therapist_id int not null,
+	constraint webapp_isapatientof_patient_id_a48dd55a_fk_webapp_patient_id
+		foreign key (patient_id) references webapp_patient (id),
+	constraint webapp_isapatientof_therapist_id_1bf698e0_fk_webapp_therapist_id
+		foreign key (therapist_id) references webapp_therapist (id)
+)
+;
 
---
--- Table structure for table `Ward_Has_Person`
---
+create table if not exists webapp_userprofile
+(
+	id int auto_increment
+		primary key,
+	role int not null,
+	patient_id int not null,
+	therapist_id int not null,
+	user_id int not null,
+	constraint user_id
+		unique (user_id),
+	constraint webapp_userprofile_patient_id_c6802313_fk_webapp_patient_id
+		foreign key (patient_id) references webapp_patient (id),
+	constraint webapp_userprofile_therapist_id_610fc54d_fk_webapp_therapist_id
+		foreign key (therapist_id) references webapp_therapist (id),
+	constraint webapp_userprofile_user_id_052c96be_fk_auth_user_id
+		foreign key (user_id) references auth_user (id)
+)
+;
 
-DROP TABLE IF EXISTS `Ward_Has_Person`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
- SET character_set_client = utf8mb4 ;
-CREATE TABLE `Ward_Has_Person` (
-  `ID` int(11) NOT NULL,
-  `Ward_ID` int(11) DEFAULT NULL,
-  `Person_ID` varchar(36) NOT NULL,
-  PRIMARY KEY (`ID`),
-  KEY `Ward_ID_idx` (`Ward_ID`),
-  CONSTRAINT `Ward_ID` FOREIGN KEY (`Ward_ID`) REFERENCES `Ward` (`ward_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+create table if not exists webapp_visitrecord
+(
+	id int auto_increment
+		primary key,
+	date datetime(6) not null,
+	patient_id int not null,
+	therapist_id int not null,
+	constraint webapp_visit_record_patient_id_f979f7cd_fk_webapp_patient_id
+		foreign key (patient_id) references webapp_patient (id),
+	constraint webapp_visit_record_therapist_id_99da10a4_fk_webapp_therapist_id
+		foreign key (therapist_id) references webapp_therapist (id)
+)
+;
 
---
--- Dumping events for database 'ifs4205'
---
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+create table if not exists webapp_ward
+(
+	id int auto_increment
+		primary key,
+	name varchar(100) not null,
+	policy int not null
+)
+;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+create table if not exists webapp_ward_patients
+(
+	id int auto_increment
+		primary key,
+	ward_id int not null,
+	patient_id int not null,
+	constraint webapp_ward_patients_ward_id_patient_id_eb627ee6_uniq
+		unique (ward_id, patient_id),
+	constraint webapp_ward_patients_patient_id_f2b8ed4b_fk_webapp_patient_id
+		foreign key (patient_id) references webapp_patient (id),
+	constraint webapp_ward_patients_ward_id_ae1a0ad1_fk_webapp_ward_id
+		foreign key (ward_id) references webapp_ward (id)
+)
+;
 
--- Dump completed on 2018-09-27 12:40:44
+create table if not exists webapp_ward_therapists
+(
+	id int auto_increment
+		primary key,
+	ward_id int not null,
+	therapist_id int not null,
+	constraint webapp_ward_therapists_ward_id_therapist_id_d58b8eba_uniq
+		unique (ward_id, therapist_id),
+	constraint webapp_ward_therapis_therapist_id_095bd72f_fk_webapp_th
+		foreign key (therapist_id) references webapp_therapist (id),
+	constraint webapp_ward_therapists_ward_id_cfb7cb39_fk_webapp_ward_id
+		foreign key (ward_id) references webapp_ward (id)
+)
+;
+
