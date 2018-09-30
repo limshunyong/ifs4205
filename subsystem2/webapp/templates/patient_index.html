@@ -1,7 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% include "./records_table.html" %}
-
-
+<div class="card mb-3 h-50">
+  <div class="card-header">
+    <i class="fas fa-table"></i>
+    Your records
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Issued by</th>
+            <th>Type</th>
+            <th>Permission</th>
+          </tr>
+        </thead>
+        <tbody>
+            {% for r in record_list %}
+                    <tr>
+                        <td>{{ r.date }}</td>
+                        <td>{{ r.description }}</td>
+                        <td>{{ r.id }}</td>
+                        <td>{{ r.type }}</td>
+                        <td>{{ r.title }}</td>
+                    </tr>
+            {% endfor %}
+          <!-- Sample Data -->
+          {% for i in "x"|rjust:"100" %}
+          <tr>
+            <td>2011/04/25</td>
+            <td><a href="#">{% lorem 2 w random %}</a></td>
+            <td>{% lorem 2 w random %}</td>
+            <td>Record type</td>
+            <td><button type="button" class="btn btn-info">Review</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {% endblock %}
