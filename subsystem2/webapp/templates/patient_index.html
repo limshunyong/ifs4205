@@ -1,25 +1,49 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p>Welcome back, {{ user.username }}</p>
-<a href="/web/logout/">Logout</a>
-
-<table style="width:100%">
-    <tr>
-        <th>ID</th>
-        <th>Type</th>
-        <th>Title</th>
-        <th>Description</th>
-        <th>Date</th>
-    </tr>
-    {% for r in record_list %}
-        <tr>
-            <td>{{ r.id }}</td>
-            <td>{{ r.type }}</td>
-            <td>{{ r.title }}</td>
-            <td>{{ r.description }}</td>
-            <td>{{ r.date }}</td>
-        </tr>
-    {% endfor %}
-
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="fas fa-table"></i>
+    Your records
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Issued by</th>
+            <th>Type</th>
+            <th>Permission</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Sample Data -->
+          <tr>
+            <td>2018/09/27</td>
+            <td><a href="/web/patient/record/1" target="_blank">Blood Pressure Reading</a></td>
+            <td>Dr. Lim</td>
+            <td>BP</td>
+            <td><button type="button" class="btn btn-info">Review</button></td>
+          </tr>
+          <tr>
+            <td>2018/09/28</td>
+            <td><a href="/web/patient/record/2" target="_blank">X-Ray</a></td>
+            <td>Dr. Lee</td>
+            <td>XRAY</td>
+            <td><button type="button" class="btn btn-info">Review</button></td>
+          </tr>
+          <tr>
+            <td>2018/09/28</td>
+            <td><a href="/web/patient/record/3" target="_blank">Parkinsons</a></td>
+            <td>Dr. Hong</td>
+            <td>MOVIE</td>
+            <td><button type="button" class="btn btn-info">Review</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {% endblock %}
