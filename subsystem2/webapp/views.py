@@ -23,34 +23,34 @@ from django.contrib import messages
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile
 
 def login_view(request, next=None):
-	next_url = request.GET.get('next')
-	if request.method == 'POST':
-		username = request.POST['username']
-		password = request.POST['password']
-		user = authenticate(request, username=username, password=password)
-		if user is not None:
-			login(request, user)
-			if next_url is not None:
-				return redirect(next_url)
-			else:
-				return redirect("/web/patient/index/")
-		else:
-			context = {
-				'next': next_url,
-				'error_msg': "Wrong username or password."
-			}
-			return render(request, "login.html", context)
-	else:
-		context = {
-			'next': next_url,
-			'error_msg': None
-		}
-		return render(request, "login.html", context)
+    next_url = request.GET.get('next')
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            if next_url is not None:
+                return redirect(next_url)
+            else:
+                return redirect("/web/patient/index/")
+        else:
+            context = {
+                'next': next_url,
+                'error_msg': "Wrong username or password."
+            }
+            return render(request, "login.html", context)
+    else:
+        context = {
+            'next': next_url,
+            'error_msg': None
+        }
+        return render(request, "login.html", context)
 
 
 def logout_view(request):
-	logout(request)
-	return redirect("/web/login/")
+    logout(request)
+    return redirect("/web/login/")
 
 
 @login_required
@@ -63,3 +63,13 @@ def patient_index_view(request):
         'record_list': record_list
     }
     return render(request, 'patient_index.html', context)
+
+@login_required
+def patient_record_view(request, record_id):
+    print(record_id)
+
+    context = {
+        'user': request.user,
+        'record_id':  record_id
+    }
+    return render(request, 'patient_record.html', context)
