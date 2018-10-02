@@ -11,6 +11,8 @@ PERMISSION_SCOPES = (
     (3, 'Read / Write')
 )
 
+FULL_ACCESS = 3
+
 DATA_TYPES = (
     (0, 'Image'),
     (1, 'Time Series'),
@@ -112,8 +114,6 @@ class Ward(models.Model):
                         document_access=self.document_access
                         )
                     rs.save()
-
-        # Apply default policy to 
         super().save(*args, **kwargs)
 
 
@@ -136,6 +136,42 @@ class HealthData(models.Model):
     description = models.CharField(max_length=1000, blank=False)
     date = models.DateTimeField('created on', auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        list_patient_therapist = IsAPatientOf.objects.filter(patient=self.patient)
+
+        for rs in list_patient_therapist:
+            existing_record = HealthDataPermission.objects.filter(
+                health_data=self, therapist=rs.therapist, patient=self.patient
+                )[:1]
+
+            if not existing_record:
+                if self.therapist == rs.therapist:
+                    p = FULL_ACCESS
+                elif self.data_type == 0: 
+                    p = rs.image_access
+                elif self.data_type == 1:
+                    p = rs.timeseries_access
+                elif self.data_type == 2:
+                    p = rs.movie_access
+                elif self.data_type == 3:
+                    p = rs.document_access
+
+                HealthDataPermission(
+                        health_data=self, patient=self.patient, 
+                        therapist=rs.therapist, 
+                        permission=p
+                        ).save()
+
+                print ('Applied permissions for %s' % rs.therapist.name)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
+            self.title,
+            [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+            self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+
 
 class HealthDataPermission(models.Model):
     id = models.AutoField(primary_key=True)
@@ -145,6 +181,9 @@ class HealthDataPermission(models.Model):
     permission = models.IntegerField(choices=PERMISSION_SCOPES, blank=False)
     date = models.DateTimeField('last updated on', auto_now_add=True)
     # TODO: On save, modifiy date
+
+    def __str__(self):
+        return '%s <-> %s <-> %s' % (self.health_data, self.patient, self.therapist)
 
 class UserProfile(models.Model):
     """Extends Django's built-in user model"""
