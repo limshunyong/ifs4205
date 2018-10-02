@@ -55,6 +55,9 @@ class Researcher(models.Model):
     name = models.CharField(max_length=100, blank=False)
     institution = models.CharField(max_length=100, blank=False)
 
+    def __str__(self):
+        return 'researcher id: %d, name: %s' % (self.id, self.name)
+
 
 class Ward(models.Model):
     POLICY_READ_ONLY = 0
@@ -68,6 +71,9 @@ class Ward(models.Model):
     patients = models.ManyToManyField(Patient)
     therapists = models.ManyToManyField(Therapist)
     policy = models.IntegerField(choices=POLICY_CHOICES, default=POLICY_READ_WRITE)
+
+    def __str__(self):
+        return 'ward id: %d, name: %s' % (self.id, self.name)
 
 
 class VisitRecord(models.Model):
