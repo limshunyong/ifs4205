@@ -146,6 +146,7 @@ class HealthData(models.Model):
 
             if not existing_record:
                 if self.therapist == rs.therapist:
+                    # Creator of health data should have full access
                     p = FULL_ACCESS
                 elif self.data_type == 0: 
                     p = rs.image_access
