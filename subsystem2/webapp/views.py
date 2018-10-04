@@ -3,6 +3,7 @@ import csv
 import codecs
 import time
 import urllib.parse
+import os.path
 from datetime import datetime
 import pytz
 from django.shortcuts import get_object_or_404, render, redirect
@@ -20,7 +21,16 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 
-from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile
+from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile, PERMISSION_SCOPES, DATA_TYPES
+from .forms import UploadDataForm
+from .object import put_object
+
+# user_passes_test helper functions
+def is_therapist(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_THERAPIST
+    except:
+        return False
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -67,7 +77,7 @@ def patient_index_view(request, type=None):
     return render(request, 'patient_index.html', context)
 
 @login_required
-def patient_record_view(request):
+def patient_record_view(request, record_id):
     print(record_id)
 
     context = {
@@ -84,3 +94,29 @@ def patient_record_view(request):
         return render(request, 'patient_record_movie.html', context)
     else:
         return render(request, 'patient_index.html', context)
+
+@login_required
+@user_passes_test(is_therapist)
+def therapist_upload_data(request):
+    therapist = request.user.userprofile.therapist
+
+    if request.method == 'GET':
+        context = {
+            'user': request.user,
+            'upload_data_form': UploadDataForm(therapist_id=therapist.pk)
+        }
+        return render(request, 'therapist_upload.html', context)
+
+    elif request.method == 'POST':
+        form = UploadDataForm(request.POST, therapist_id=therapist.pk)
+
+        # TODO: Implement Form Validation
+        # if form.isValid():
+
+        file = request.FILES['file']
+        _, file_extension = os.path.splitext(file.name)
+        patient_id = request.POST['patient']
+        object_file_name = '%s_%s%s' % (patient_id, time.time(), file_extension)
+        put_object(object_file_name, file.file, file.size)
+
+        return HttpResponse("Posted")

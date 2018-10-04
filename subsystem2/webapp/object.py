@@ -7,21 +7,11 @@ minioClient = Minio('localhost:9000',
                     secret_key='',
                     secure=False)
 
+BUCKET_NAME = 'patientdata'
 
-def put_object(bucket_name, object_name, path):
-    # Put an object 'objectName' with contents from '/tmp/otherobject',
-    # upon success prints the etag identifier computed by server.
-    if bucket_name == 'images':
-        content_type = 'image/jpg'
-    elif bucket_name == 'videos':
-        content_type = 'video/mp4'
-    else:
-        content_type = 'application/csv'
-    try:
-        print(minioClient.fput_object(bucket_name, object_name, path, content_type))
-    except ResponseError as err:
-        print(err)
-
+def put_object(object_name, data, length):
+    etag = minioClient.put_object(BUCKET_NAME, object_name, data, length)
+    return etag
 
 def get_object(bucket_name, object_name):
     if bucket_name == 'images':
