@@ -1,67 +1,77 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card mb-3">
-  <div class="card-header">
-    <i class="fas fa-table"></i>
-    Your records
-  </div>
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Issued by</th>
-            <th>Type</th>
-            <th>Permission</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if not type %}
-          <!-- Sample Data -->
-          <tr>
-            <td>2018/09/27</td>
-            <td><a href="/web/patient/record/1" target="_blank">Blood Pressure Reading</a></td>
-            <td>Dr. Lim</td>
-            <td>BP</td>
-            <td><button type="button" class="btn btn-info">Review</button></td>
-          </tr>
-          <tr>
-            <td>2018/09/28</td>
-            <td><a href="/web/patient/record/2" target="_blank">X-Ray</a></td>
-            <td>Dr. Lee</td>
-            <td>XRAY</td>
-            <td><button type="button" class="btn btn-info">Review</button></td>
-          </tr>
-          <tr>
-            <td>2018/09/28</td>
-            <td><a href="/web/patient/record/3" target="_blank">Parkinsons</a></td>
-            <td>Dr. Hong</td>
-            <td>MOVIE</td>
-            <td><button type="button" class="btn btn-info">Review</button></td>
-          </tr>
-          {% else %}
-            {% if records %}
-              {% for r in records %}
-                <tr>
-                  <td>{{ r.date }}</td>
-                  <td><a href="/web/patient/record/{{ r.id }}/" target="_blank">{{ r.title }}</a></td>
-                  <td>{{ r.therapist.name }}</td>
-                  <td>{{ r.type }}</td>
-                  <td><button type="button" class="btn btn-info">Review</button></td>
-                </tr>
-              {% endfor %}
-            {% else %}
-                <tr>
-                  <td>No record.</td>
-                <tr>
-            {% endif %}
-          {% endif %}
-        </tbody>
-      </table>
+<div id="wrapper">
+  
+  <div id="content-wrapper">
+      <div class="container-fluid">
+          <main>
+            <div class="card mb-3">
+              <div class="card-header">
+                <i class="fas fa-table"></i>
+                Your records
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Issued by</th>
+                        <th>Type</th>
+                        <th>Permission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% if not type %}
+                      <!-- Sample Data -->
+                      <tr>
+                        <td>2018/09/27</td>
+                        <td><a href="/web/patient/record/1" target="_blank">Blood Pressure Reading</a></td>
+                        <td>Dr. Lim</td>
+                        <td>BP</td>
+                        <td><button type="button" class="btn btn-info">Review</button></td>
+                      </tr>
+                      <tr>
+                        <td>2018/09/28</td>
+                        <td><a href="/web/patient/record/2" target="_blank">X-Ray</a></td>
+                        <td>Dr. Lee</td>
+                        <td>XRAY</td>
+                        <td><button type="button" class="btn btn-info">Review</button></td>
+                      </tr>
+                      <tr>
+                        <td>2018/09/28</td>
+                        <td><a href="/web/patient/record/3" target="_blank">Parkinsons</a></td>
+                        <td>Dr. Hong</td>
+                        <td>MOVIE</td>
+                        <td><button type="button" class="btn btn-info">Review</button></td>
+                      </tr>
+                      {% else %}
+                        {% if records %}
+                          {% for r in records %}
+                            <tr>
+                              <td>{{ r.date }}</td>
+                              <td><a href="/web/patient/record/{{ r.id }}/" target="_blank">{{ r.title }}</a></td>
+                              <td>{{ r.therapist.name }}</td>
+                              <td>{{ r.type }}</td>
+                              <td><button type="button" class="btn btn-info">Review</button></td>
+                            </tr>
+                          {% endfor %}
+                        {% else %}
+                            <tr>
+                              <td>No record.</td>
+                            <tr>
+                        {% endif %}
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
     </div>
-  </div>
 </div>
+
 {% endblock %}
