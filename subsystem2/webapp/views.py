@@ -57,7 +57,7 @@ def logout_view(request):
 def patient_index_view(request, type=None):
     # TODO add pagination
     patient = request.user.userprofile.patient
-    records = HealthData.objects.filter(patient=patient, type=type)
+    records = HealthData.objects.filter(patient=patient, data_type=type)
     print(records)
     context = {
         'user': request.user,
