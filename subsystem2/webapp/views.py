@@ -110,13 +110,24 @@ def therapist_upload_data(request):
     elif request.method == 'POST':
         form = UploadDataForm(request.POST, therapist_id=therapist.pk)
 
-        # TODO: Implement Form Validation
+        # TODO: Implement Form Validation, Clean Up
         # if form.isValid():
 
         file = request.FILES['file']
         _, file_extension = os.path.splitext(file.name)
         patient_id = request.POST['patient']
-        object_file_name = '%s_%s%s' % (patient_id, time.time(), file_extension)
-        put_object(object_file_name, file.file, file.size)
+        minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+        put_object(minio_filename, file.file, file.size)
+
+        patient_data = HealthData(
+            patient=Patient.objects.get(pk=patient_id),
+            therapist=therapist,
+            data_type=request.POST['data_type'],
+            title=file.name,
+            description='',
+            minio_filename=minio_filename
+            )
+
+        patient_data.save()
 
         return HttpResponse("Posted")

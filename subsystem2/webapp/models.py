@@ -133,6 +133,7 @@ class HealthData(models.Model):
     therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False, default=0)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
+    minio_filename = models.CharField(max_length=100, blank=False)
     description = models.CharField(max_length=1000, blank=False)
     date = models.DateTimeField('created on', auto_now_add=True)
 
