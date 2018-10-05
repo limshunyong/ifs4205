@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 
 PERMISSION_SCOPES = (
     (0, 'No Access'),
@@ -96,11 +98,20 @@ class Ward(models.Model):
     document_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
 
     def __str__(self):
-        return 'ward id: %d, name: %s' % (self.id, self.name)
+        return self.name
 
-    def save(self, *args, **kwargs):
-        patients = self.patients.all()
-        therapists = self.therapists.all()
+@receiver(m2m_changed, sender=Ward.patients.through)
+@receiver(m2m_changed, sender=Ward.therapists.through)
+def add_IsAPatientOf(sender, instance, **kwargs):
+    action = kwargs.pop('action', None)
+    pk_set = kwargs.pop('pk_set', None)
+    model = kwargs.pop('model', None)
+
+    # Create IsAPatientOf for every (Therapist, Patient) permutation 
+    # in a Ward and apply default Ward Policy
+    if action == 'post_add':
+        patients = instance.patients.all()
+        therapists = instance.therapists.all()
         for p in patients:
             for t in therapists:
                 print ('%s <----> %s' % (p.name, t.name))
@@ -112,13 +123,12 @@ class Ward(models.Model):
                     print('Not patient, will create')
                     rs = IsAPatientOf(
                         patient=p, therapist=t, 
-                        image_access=self.image_access,
-                        movie_access=self.movie_access,
-                        timeseries_access=self.timeseries_access,
-                        document_access=self.document_access
+                        image_access=instance.image_access,
+                        movie_access=instance.movie_access,
+                        timeseries_access=instance.timeseries_access,
+                        document_access=instance.document_access
                         )
                     rs.save()
-        super().save(*args, **kwargs)
 
 
 class VisitRecord(models.Model):
