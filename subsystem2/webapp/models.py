@@ -6,18 +6,22 @@ from django.core.exceptions import ValidationError
 
 PERMISSION_SCOPES = (
     (0, 'No Access'),
-    (1, 'Read'),
-    (2, 'Write'),
+    (1, 'Read Only'),
+    (2, 'Write Only'),
     (3, 'Read / Write')
 )
 
 FULL_ACCESS = 3
 
+IMAGE_DATA = 0
+TIME_SERIES_DATA = 1
+MOIVE_DATA = 2
+DOCUMENT_DATA = 3
 DATA_TYPES = (
-    (0, 'Image'),
-    (1, 'Time Series'),
-    (2, 'Movie'),
-    (3, 'Document')
+    (IMAGE_DATA, 'Image'),
+    (TIME_SERIES_DATA, 'Time Series'),
+    (MOIVE_DATA, 'Movie'),
+    (DOCUMENT_DATA, 'Document')
 )
 
 def no_future_date(value):
@@ -130,7 +134,7 @@ class VisitRecord(models.Model):
 class HealthData(models.Model):
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False, default=0)
+    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
     description = models.CharField(max_length=1000, blank=False)
