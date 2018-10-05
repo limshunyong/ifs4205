@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card mb-3">
+	<div class="card-header">
+		<i class="fas fa-table"></i>
+		Therapist Upload Data Portal
+	</div>
+	<div class="card-body">
+		<form action="/web/therapist/upload" method="post" id="upload-form" enctype="multipart/form-data">
+			<div class="form-group">
+				{{ upload_data_form }}
+				{% csrf_token %}
+				<button type="submit" form="upload-form" class="btn btn-primary btn-block">Submit</a></button>
+			</div>
+		</form>
+	</div>
+</div>
+
+{% endblock %}

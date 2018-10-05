@@ -23,16 +23,17 @@
                <p>{{ error_msg}}</p>
                {% endif %}
                <form action="/web/login/" method="post" id="login-form">
-               <div class="form-group">
-                  <div class="form-label-group">
-                     <input type="text" class="validate form-control" name="username" id="username" placeholder="Username" required="required"/>
+                  <div class="form-group">
+                     <div class="form-label-group">
+                        <input type="text" class="validate form-control" name="username" id="username" placeholder="Username" required="required"/>
+                     </div>
+                     <div class="form-label-group">
+                        <input type="password" id="inputPassword" class="validate form-control" name="password" id="password" placeholder="Password" required="required"/>
+                     </div>
+                     {% csrf_token %}
+                     <button type="submit" form="login-form" class="btn btn-primary btn-block">Login</a></button>
                   </div>
-                  <div class="form-label-group">
-                     <input type="password" id="inputPassword" class="validate form-control" name="password" id="password" placeholder="Password" required="required"/>
-                  </div>
-                  {% csrf_token %}
-                  <button type="submit" form="login-form" class="btn btn-primary btn-block">Login</a>
-               </div>
+               </form>
                <div class="text-center">
                   <a class="d-block small mt-3" href="register.html">Register an Account</a>
                   <a class="d-block small" href="forgot-password.html">Forgot Password?</a>
