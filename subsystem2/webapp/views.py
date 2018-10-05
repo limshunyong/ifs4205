@@ -7,7 +7,7 @@ import os.path
 from datetime import datetime
 import pytz
 from django.shortcuts import get_object_or_404, render, redirect
-from django.http import Http404, HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse
 from django.utils import timezone
 from django.utils.encoding import escape_uri_path
 from django.views import View
@@ -21,9 +21,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 
-from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, HealthDataPermission, UserProfile, DATA_TYPES
+from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
+HealthDataPermission, UserProfile, DATA_TYPES, READ_ONLY, FULL_ACCESS, IMAGE_DATA, TIME_SERIES_DATA,\
+MOVIE_DATA, DOCUMENT_DATA 
 from .forms import UploadDataForm
-from .object import put_object
+from .object import put_object, get_object
 
 
 # user_passes_test helper functions
@@ -32,7 +34,6 @@ def is_therapist(user):
         return user.userprofile.role == UserProfile.ROLE_THERAPIST
     except:
         return False
-
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -90,12 +91,41 @@ def patient_record_view(request, record_id):
     # hardcoded value for the first demo. to be removed
     if record_id == "1":
         return render(request, 'patient_record_bp.html', context)
-    elif record_id == "2":
+    # elif record_id == "2":
+    #     return render(request, 'patient_record_image.html', context)
+    # elif record_id == "3":
+    #     return render(request, 'patient_record_movie.html', context)
+    # else:
+    #     return render(request, 'patient_index.html', context)
+
+    user = request.user.userprofile
+    if user.role == UserProfile.ROLE_PATIENT:
+        print(user.patient)
+        obj = get_object_or_404(HealthData, Q(pk=record_id, patient=user.patient))
+    elif user.role == UserProfile.ROLE_THERAPIST:
+        print(user.therapist)
+        obj =  get_object_or_404(HealthDataPermission,
+            Q(health_data__id=record_id, therapist=user.therapist, permission=READ_ONLY) | 
+            Q(health_data__id=record_id, therapist=user.therapist, permission=FULL_ACCESS)).health_data
+
+    print(obj.data_type)
+    print(obj.minio_filename)
+
+    obj_link = get_object(obj.minio_filename)
+    print(obj_link)
+
+    if obj.data_type == IMAGE_DATA:
+        context['obj_link'] = obj_link
         return render(request, 'patient_record_image.html', context)
-    elif record_id == "3":
+    elif obj.data_type == MOVIE_DATA:
+        context['obj_link'] = obj_link
         return render(request, 'patient_record_movie.html', context)
+    elif obj.data_type == TIME_SERIES_DATA:
+        return HttpResponse('To implement.')
+    elif obj.data_type == DOCUMENT_DATA:
+        return HttpResponse('To implement.')
     else:
-        return render(request, 'patient_index.html', context)
+        return HttpResponseForbidden()
 
 
 @login_required

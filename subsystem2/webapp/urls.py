@@ -11,4 +11,4 @@ urlpatterns = [
 	url(r'^patient/permission/(?P<therapist_id>\d+)/$', views.patient_permission_detail_view, name='patient_perm'),
 	url(r'^patient/permission/update/(?P<therapist_id>\d+)/(?P<data_type>\d+)/(?P<choice>\d+)/$', views.patient_update_permission),
 	url(r'^therapist/upload$', views.therapist_upload_data, name='therapist_upload_data')
-]
+] 

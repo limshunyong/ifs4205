@@ -33,26 +33,12 @@
                         <td>BP</td>
                         <td><button type="button" class="btn btn-info">Review</button></td>
                       </tr>
-                      <tr>
-                        <td>2018/09/28</td>
-                        <td><a href="/web/patient/record/2" target="_blank">X-Ray</a></td>
-                        <td>Dr. Lee</td>
-                        <td>XRAY</td>
-                        <td><button type="button" class="btn btn-info">Review</button></td>
-                      </tr>
-                      <tr>
-                        <td>2018/09/28</td>
-                        <td><a href="/web/patient/record/3" target="_blank">Parkinsons</a></td>
-                        <td>Dr. Hong</td>
-                        <td>MOVIE</td>
-                        <td><button type="button" class="btn btn-info">Review</button></td>
-                      </tr>
                       {% else %}
                         {% if records %}
                           {% for r in records %}
                             <tr>
                               <td>{{ r.date }}</td>
-                              <td><a href="/web/patient/record/{{ r.id }}/" target="_blank">{{ r.title }}</a></td>
+                              <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
                               <td>{{ r.therapist.name }}</td>
                               <td>{{ r.type }}</td>
                               <td><button type="button" class="btn btn-info">Review</button></td>
