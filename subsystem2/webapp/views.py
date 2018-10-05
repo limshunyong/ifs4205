@@ -174,6 +174,25 @@ def patient_permission_view(request):
     }
     return render(request, 'patient_permission.html', context)
 
+@login_required
+def patient_file_permission_view(request, record_id):
+    print('in')
+    patient = request.user.userprofile.patient
+    context = {
+        'therapists': Therapist.objects.filter(healthdatapermission__patient=patient, healthdatapermission__id=record_id),
+        'record_id': record_id
+    }
+    return render(request, 'patient_file_permission.html', context)
+
+@login_required
+def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
+    patient = request.user.userprofile.patient
+    therapist = Therapist.objects.get(id=therapist_id)
+    context = {
+        'file_permission_set' : get_object_or_404(HealthDataPermission, patient=patient, therapist=therapist, id=record_id),
+        'record_id' : record_id
+    }
+    return render(request, 'patient_file_permission_detail.html', context)
 
 @login_required
 def patient_permission_detail_view(request, therapist_id=None):
@@ -207,3 +226,28 @@ def patient_update_permission(request, therapist_id=None, data_type=None, choice
         is_a_patient_of.document_access = choice
     is_a_patient_of.save()
     return redirect('/web/patient/permission/'+str(therapist.id))
+
+
+@login_required
+def patient_update_file_permission(request, record_id, therapist_id=None, data_type=None, choice=None):
+    if (therapist_id is None) or (data_type is None) or (choice is None):
+        raise Http404
+
+    therapist = Therapist.objects.get(id=therapist_id)
+    healthdatapermisison = HealthDataPermission.objects.get(therapist=therapist, id=record_id)
+
+    # TODO use url path
+    data_type = int(data_type)
+    # TODO change numbers to DATA_TYPE
+    print('data_type', data_type)
+    if data_type == 0:
+        healthdatapermisison.permission = choice
+    elif data_type == 1:
+        healthdatapermisison.permission = choice
+    elif data_type == 2:
+        healthdatapermisison.permission = choice
+    elif data_type == 3:
+        healthdatapermisison.permission = choice
+    healthdatapermisison.save()
+
+    return redirect('/web/patient/record/'+ str(record_id)+'/permission/'+ str(therapist.id) +'/')
