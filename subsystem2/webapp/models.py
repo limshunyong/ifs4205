@@ -98,7 +98,7 @@ class Ward(models.Model):
     document_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
 
     def __str__(self):
-        return self.name
+        return 'ward id: %d, name: %s' % (self.id, self.name)
 
 @receiver(m2m_changed, sender=Ward.patients.through)
 @receiver(m2m_changed, sender=Ward.therapists.through)
