@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h6> Therapist: {{ permission_set.therapist.name }}<h6>
+    <div class="table-responsive">
+        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Permission</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if permission_set %}
+                    <tr>
+                        <td>Image Access</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    {{ permission_set.get_image_access_display }}
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/0/0">No Access</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/0/1">Read Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/0/2">Write Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/0/3">Read / Write</a>
+                                </div>
+                            </div>
+                        <td>
+                    </tr>
+                    <tr>
+                        <td>Time-series Access</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    {{ permission_set.get_timeseries_access_display }}
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/1/0">No Access</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/1/1">Read Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/1/2">Write Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/1/3">Read / Write</a>
+                                </div>
+                            </div>
+                        <td>
+                    </tr>
+                    <tr>
+                        <td>Moive Access</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    {{ permission_set.get_movie_access_display }}
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/2/0">No Access</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/2/1">Read Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/2/2">Write Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/2/3">Read / Write</a>
+                                </div>
+                            </div>
+                        <td>
+                    </tr>
+                    <tr>
+                        <td>Document Access</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    {{ permission_set.get_document_access_display }}
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/3/0">No Access</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/3/1">Read Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/3/2">Write Only</a>
+                                    <a class="dropdown-item" href="/web/patient/permission/update/{{ permission_set.therapist.id }}/3/3">Read / Write</a>
+                                </div>
+                            </div>
+                        <td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
