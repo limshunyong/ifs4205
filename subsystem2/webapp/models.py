@@ -17,12 +17,12 @@ FULL_ACCESS = 3
 
 IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
-MOIVE_DATA = 2
+MOVIE_DATA = 2
 DOCUMENT_DATA = 3
 DATA_TYPES = (
     (IMAGE_DATA, 'Image'),
     (TIME_SERIES_DATA, 'Time Series'),
-    (MOIVE_DATA, 'Movie'),
+    (MOVIE_DATA, 'Movie'),
     (DOCUMENT_DATA, 'Document')
 )
 
