@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h6> Therapist: {{ file_permission_set.therapist.name }}<h6>
+    <div class="table-responsive">
+        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Permission</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if file_permission_set %}
+                    <tr>
+                        <td>Data Permission</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    {{ file_permission_set.get_permission_display }}
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/web/patient/record/{{ record_id }}/permission/{{ file_permission_set.therapist.id }}/update/0/0">No Access</a>
+                                    <a class="dropdown-item" href="/web/patient/record/{{ record_id }}/permission/{{ file_permission_set.therapist.id }}/update/0/1">Read Only</a>
+                                    <a class="dropdown-item" href="/web/patient/record/{{ record_id }}/permission/{{ file_permission_set.therapist.id }}/update/0/2">Write Only</a>
+                                    <a class="dropdown-item" href="/web/patient/record/{{ record_id }}/permission/{{ file_permission_set.therapist.id }}/update/0/3">Read / Write</a>
+                                </div>
+                            </div>
+                        <td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
