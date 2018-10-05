@@ -3,21 +3,27 @@ from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.db.models.signals import m2m_changed, post_save
+from django.dispatch import receiver
 
 PERMISSION_SCOPES = (
     (0, 'No Access'),
-    (1, 'Read'),
-    (2, 'Write'),
+    (1, 'Read Only'),
+    (2, 'Write Only'),
     (3, 'Read / Write')
 )
 
 FULL_ACCESS = 3
 
+IMAGE_DATA = 0
+TIME_SERIES_DATA = 1
+MOVIE_DATA = 2
+DOCUMENT_DATA = 3
 DATA_TYPES = (
-    (0, 'Image'),
-    (1, 'Time Series'),
-    (2, 'Movie'),
-    (3, 'Document')
+    (IMAGE_DATA, 'Image'),
+    (TIME_SERIES_DATA, 'Time Series'),
+    (MOVIE_DATA, 'Movie'),
+    (DOCUMENT_DATA, 'Document')
 )
 
 def no_future_date(value):
@@ -94,9 +100,18 @@ class Ward(models.Model):
     def __str__(self):
         return 'ward id: %d, name: %s' % (self.id, self.name)
 
-    def save(self, *args, **kwargs):
-        patients = self.patients.all()
-        therapists = self.therapists.all()
+@receiver(m2m_changed, sender=Ward.patients.through)
+@receiver(m2m_changed, sender=Ward.therapists.through)
+def add_IsAPatientOf(sender, instance, **kwargs):
+    action = kwargs.pop('action', None)
+    pk_set = kwargs.pop('pk_set', None)
+    model = kwargs.pop('model', None)
+
+    # Create IsAPatientOf for every (Therapist, Patient) permutation 
+    # in a Ward and apply default Ward Policy
+    if action == 'post_add':
+        patients = instance.patients.all()
+        therapists = instance.therapists.all()
         for p in patients:
             for t in therapists:
                 print ('%s <----> %s' % (p.name, t.name))
@@ -108,13 +123,12 @@ class Ward(models.Model):
                     print('Not patient, will create')
                     rs = IsAPatientOf(
                         patient=p, therapist=t, 
-                        image_access=self.image_access,
-                        movie_access=self.movie_access,
-                        timeseries_access=self.timeseries_access,
-                        document_access=self.document_access
+                        image_access=instance.image_access,
+                        movie_access=instance.movie_access,
+                        timeseries_access=instance.timeseries_access,
+                        document_access=instance.document_access
                         )
                     rs.save()
-        super().save(*args, **kwargs)
 
 
 class VisitRecord(models.Model):
@@ -130,48 +144,50 @@ class VisitRecord(models.Model):
 class HealthData(models.Model):
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False, default=0)
+    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
+    minio_filename = models.CharField(max_length=100, blank=False)
     description = models.CharField(max_length=1000, blank=False)
     date = models.DateTimeField('created on', auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        list_patient_therapist = IsAPatientOf.objects.filter(patient=self.patient)
-
-        for rs in list_patient_therapist:
-            existing_record = HealthDataPermission.objects.filter(
-                health_data=self, therapist=rs.therapist, patient=self.patient
-                )[:1]
-
-            if not existing_record:
-                if self.therapist == rs.therapist:
-                    # Creator of health data should have full access
-                    p = FULL_ACCESS
-                elif self.data_type == 0: 
-                    p = rs.image_access
-                elif self.data_type == 1:
-                    p = rs.timeseries_access
-                elif self.data_type == 2:
-                    p = rs.movie_access
-                elif self.data_type == 3:
-                    p = rs.document_access
-
-                HealthDataPermission(
-                        health_data=self, patient=self.patient, 
-                        therapist=rs.therapist, 
-                        permission=p
-                        ).save()
-
-                print ('Applied permissions for %s' % rs.therapist.name)
-
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
             self.title,
             [item[1] for item in DATA_TYPES if item[0] == self.data_type],
             self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+
+# Update permissions for all of Patient X's therapist
+@receiver(post_save, sender=HealthData)
+def update_permissions(sender, instance, **kwargs):
+    list_patient_therapist = IsAPatientOf.objects.filter(patient=instance.patient)
+
+    for rs in list_patient_therapist:
+        existing_record = HealthDataPermission.objects.filter(
+            health_data=instance, therapist=rs.therapist, patient=instance.patient
+            )[:1]
+
+        if not existing_record:
+            p = 0
+            if instance.therapist == rs.therapist:
+                # Creator of health data should have full access
+                p = FULL_ACCESS
+            elif instance.data_type == '0':
+                p = rs.image_access
+            elif instance.data_type == '1':
+                p = rs.timeseries_access
+            elif instance.data_type == '2':
+                p = rs.movie_access
+            elif instance.data_type == '3':
+                p = rs.document_access
+
+            HealthDataPermission(
+                    health_data=instance, patient=instance.patient, 
+                    therapist=rs.therapist, 
+                    permission=p
+                    ).save()
+
+            print ('Applied permissions for %s' % rs.therapist.name)
 
 
 class HealthDataPermission(models.Model):
