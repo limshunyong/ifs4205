@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-from django.db.models.signals import m2m_changed
+from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 
 PERMISSION_SCOPES = (
@@ -151,42 +151,43 @@ class HealthData(models.Model):
     description = models.CharField(max_length=1000, blank=False)
     date = models.DateTimeField('created on', auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        list_patient_therapist = IsAPatientOf.objects.filter(patient=self.patient)
-
-        for rs in list_patient_therapist:
-            existing_record = HealthDataPermission.objects.filter(
-                health_data=self, therapist=rs.therapist, patient=self.patient
-                )[:1]
-
-            if not existing_record:
-                if self.therapist == rs.therapist:
-                    # Creator of health data should have full access
-                    p = FULL_ACCESS
-                elif self.data_type == 0: 
-                    p = rs.image_access
-                elif self.data_type == 1:
-                    p = rs.timeseries_access
-                elif self.data_type == 2:
-                    p = rs.movie_access
-                elif self.data_type == 3:
-                    p = rs.document_access
-
-                HealthDataPermission(
-                        health_data=self, patient=self.patient, 
-                        therapist=rs.therapist, 
-                        permission=p
-                        ).save()
-
-                print ('Applied permissions for %s' % rs.therapist.name)
-
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
             self.title,
             [item[1] for item in DATA_TYPES if item[0] == self.data_type],
             self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+
+# Update permissions for all of Patient X's therapist
+@receiver(post_save, sender=HealthData)
+def update_permissions(sender, instance, **kwargs):
+    list_patient_therapist = IsAPatientOf.objects.filter(patient=instance.patient)
+
+    for rs in list_patient_therapist:
+        existing_record = HealthDataPermission.objects.filter(
+            health_data=instance, therapist=rs.therapist, patient=instance.patient
+            )[:1]
+
+        if not existing_record:
+            p = 0
+            if instance.therapist == rs.therapist:
+                # Creator of health data should have full access
+                p = FULL_ACCESS
+            elif instance.data_type == '0':
+                p = rs.image_access
+            elif instance.data_type == '1':
+                p = rs.timeseries_access
+            elif instance.data_type == '2':
+                p = rs.movie_access
+            elif instance.data_type == '3':
+                p = rs.document_access
+
+            HealthDataPermission(
+                    health_data=instance, patient=instance.patient, 
+                    therapist=rs.therapist, 
+                    permission=p
+                    ).save()
+
+            print ('Applied permissions for %s' % rs.therapist.name)
 
 
 class HealthDataPermission(models.Model):
