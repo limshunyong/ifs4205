@@ -6,14 +6,19 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 
+NO_ACCESS = 0
+READ_ONLY = 1
+WRITE_ONLY = 2
+FULL_ACCESS = 3
+
+
 PERMISSION_SCOPES = (
-    (0, 'No Access'),
-    (1, 'Read Only'),
-    (2, 'Write Only'),
-    (3, 'Read / Write')
+    (NO_ACCESS, 'No Access'),
+    (READ_ONLY, 'Read Only'),
+    (WRITE_ONLY, 'Write Only'),
+    (FULL_ACCESS, 'Read / Write')
 )
 
-FULL_ACCESS = 3
 
 IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
