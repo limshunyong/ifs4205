@@ -1,10 +1,14 @@
+import random
+import ed25519
 from datetime import date
+from binascii import unhexlify
 from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
+from django_otp.models import Device
 
 NO_ACCESS = 0
 READ_ONLY = 1
@@ -221,3 +225,38 @@ class UserProfile(models.Model):
     role = models.IntegerField(choices=ROLE_CHOICES, default=ROLE_PATIENT)
     patient = models.ForeignKey(Patient, blank=True, null=True, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, blank=True, null=True, on_delete=models.CASCADE)
+
+
+class BLEOTPDevice(Device):
+    key = models.CharField(max_length=64, default="")
+    otp_challenge = models.CharField(max_length=1024, default="")
+
+    class Meta:
+        verbose_name = 'BLE OTP Device'
+        verbose_name_plural = 'BLE OTP Devices'
+
+    @property
+    def bin_key(self):
+        return ed25519.VerifyingKey(self.key.encode('ascii'), encoding='hex')
+
+    def verify_token(self, sig):
+        """
+        Try to verify ``sig`` against the saved otp_challenge
+        """
+        try:
+            verifying_key = self.bin_key
+            print("========= BLEOPTDevice:verify_token() ============")
+            print("Using verifying key", str(verifying_key.to_ascii(encoding="hex")))
+            print("Using signature:", sig)
+            print("Original challenge:", self.otp_challenge)
+            print("Encoding: base64")
+            verifying_key.verify(sig, self.otp_challenge.encode('ascii'), encoding="base64")
+            print("Signature Passed")
+        except ed25519.BadSignatureError:
+            print("Signature Failed")
+            return False
+        except Exception as e:
+            print("Signature Failed", str(e))
+            return False
+        return True
+    

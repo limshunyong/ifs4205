@@ -17,3 +17,4 @@ db.sqlite3
 .idea/modules.xml
 .idea/vcs.xml
 .idea/workspace.xml
+.vscode/

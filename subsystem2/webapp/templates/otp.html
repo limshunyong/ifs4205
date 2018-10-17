@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <meta name="description" content="">
+      <meta name="author" content="">
+      <title>SB Admin - Login</title>
+      <!-- Bootstrap core CSS-->
+      <link href="/static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+      <!-- Custom fonts for this template-->
+      <link href="/static/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+      <!-- Custom styles for this template-->
+      <link href="css/sb-admin.css" rel="stylesheet">
+      <!-- Bootstrap core JavaScript-->
+      <script src="/static/vendor/jquery/jquery.min.js"></script>
+      <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+      <script>
+        $(function() {
+            $("#otp_device").change(function() {
+                var str = "";
+                $("#otp_device option:selected" ).each(function() {
+                    str += $(this).val() + " ";
+                });
+                $("#device_id").val(str);    
+            }).trigger('change');
+        });
+      </script>
+   </head>
+   <body class="bg-dark">
+      <div class="container">
+         <form action="/web/account/otp/challenge/" method="POST" id="challenge-form">
+            <input type="hidden" name="device_id" id="device_id" value=""/>
+            {% csrf_token %}
+         </form>
+             
+         <form action="/web/account/otp/verify/" method="POST" id="verify-form">
+            <div class="card card-login mx-auto mt-5">
+                <div class="card-header">Verify Your 2FA Token</div>
+                <div class="card-body">
+                    <p>Please connect your token to the PC.</p>
+                    {% if messages %}
+                        <ul class="messages">
+                            {% for message in messages %}
+                                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <div>
+                        <select id="otp_device" name="otp_device">
+                            {% for d in devices %}
+                            <option value="{{d.persistent_id}}">{{d}}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" form="challenge-form">Connect</button>
+                    </div>
+                    <div>
+                        <input type="text" name="otp_token" id="otp" placeholder="Enter otp here" required="required"/>
+                        <button type="submit" form="verify-form">Verify</button>
+                    </div>
+                    {% csrf_token %}
+                </div>
+            </div>
+        </form>
+      </div>
+      <!-- Core plugin JavaScript-->
+      <script src="/static/vendor/jquery-easing/jquery.easing.min.js"></script>
+   </body>
+</html>
