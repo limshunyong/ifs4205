@@ -48,74 +48,74 @@ def login_view(request, next=None):
         if user is not None:
             login(request, user)
             if next_url is not None:
-                return redirect("/web/account/verify/?next="+next_url)
+                return redirect(reverse('select_otp'), next=next_url)
             else:
-                return redirect("/web/account/verify/")
+                return redirect(reverse('select_otp'))
         else:
-            context = {
-                'next': next_url,
-                'error_msg': "Wrong username or password."
-            }
-            return render(request, "login.html", context)
+            messages.add_message(request, messages.ERROR, "Invalid username or password.")
+            return render(request, "login.html")
 
-    if request.method == 'GET':
-        if (request.user.is_authenticated) and (not request.user.is_verified()):
-            return redirect("/web/account/verify/")
-        else:
-            context = {
-                'next': next_url,
-                'error_msg': None
-            }
-            return render(request, "login.html", context)
+    if (request.user.is_authenticated) and (not request.user.is_verified()):
+        redirect(reverse('select_otp'))
+
+    return render(request, "login.html")
 
 
-def verify_view(request, next=None):
+def otp_view(request, next=None):
     next_url = request.GET.get('next')
     print(request.user, request.user.is_authenticated ,request.user.is_verified())
     if not request.user.is_authenticated:
-        return redirect("/web/account/login/")
-    
+        return redirect(reverse('login'))
+
+    context = {
+        'devices': otp.devices_for_user(request.user)
+    }
+    return render(request, "otp.html", context)
+
+
+def verify_static(request):
+    if not request.user.is_authenticated:
+        return redirect(reverse('login'))
     # Verify static token
     if request.method == 'POST':
         token = request.POST['otp_token']
         device_id = request.POST['otp_device']
         device = otp.models.Device.from_persistent_id(device_id)
-        print("token",token, "device", device)
         if token and device:
             if otp.match_token(request.user, token):
                 otp.login(request, device)
-                if next_url is not None:
-                    return redirect(next_url)
-                else:
-                    return redirect("/web/patient/index/")
+                return redirect(reverse('patient_index'))
             else:
-                context = {
-                    'devices': otp.devices_for_user(request.user),
-                    'error_msg': 'Wrong token'
-                }
-                return render(request, "verify.html", context)
-        return render(request, "verify.html")
-
-    context = {
-        'devices': otp.devices_for_user(request.user)
-    }
-    return render(request, "verify.html", context)
+                messages.add_message(request, messages.ERROR, "Invalid token.")
+                return redirect(reverse('select_otp'))
+        else:
+            return redirect(reverse('select_otp'))
+    return redirect(reverse('select_otp'))
 
 
-# TODO change to ajax
-def generate_challenge(request):
+def verify_signature(request):
+    pass
+
+
+
+def challenge_view(request):
     device_id = request.POST['device_id']
     device = otp.models.Device.from_persistent_id(device_id)
+    error_msg = None
     if not request.user.is_authenticated:
-        return JsonResponse({'error': 'not_authenticated'})
+        error_msg = 'not_authenticated'
     if device_id is None or device is None:
-        return JsonResponse({'error': 'otp_device_does_not_exist'})
+        error_msg = 'otp_device_does_not_exist'
 
     msg_to_be_signed = get_random_string(length=1024)
     print(device_id, device)
     device.otp_challenge = msg_to_be_signed
     device.save()
-    return JsonResponse({'challenge': msg_to_be_signed})
+    context = {
+        'error_msg': error_msg,
+        'challenge': msg_to_be_signed
+    } 
+    return render(request, 'challenge.html', context)
 
 
 def logout_view(request):

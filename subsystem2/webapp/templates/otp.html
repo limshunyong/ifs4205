@@ -30,22 +30,29 @@
    </head>
    <body class="bg-dark">
       <div class="container">
-         <form action="/web/account/challenge/" method="post" id="challenge-form">
+         <form action="/web/account/challenge/" method="POST" id="challenge-form">
             <input type="hidden" name="device_id" id="device_id" value=""/>
             {% csrf_token %}
          </form>
              
-         <form action="." method="post" id="verify-form">
+         <form action="/web/account/verify/static/" method="POST" id="verify-form">
             <div class="card card-login mx-auto mt-5">
                 <div class="card-header">Verify Your 2FA Token</div>
                 <div class="card-body">
                     <p>Please connect your token to the PC.</p>
+                    {% if messages %}
+                        <ul class="messages">
+                            {% for message in messages %}
+                                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
                     <div>
                         <select id="otp_device" name="otp_device">
                             {% for d in devices %}
                             <option value="{{d.persistent_id}}">{{d}}</option>
                             {% endfor %}
-                        </select>{{ error_msg }}
+                        </select>
                         <button type="submit" form="challenge-form">Connect</button>
                     </div>
                     <div>

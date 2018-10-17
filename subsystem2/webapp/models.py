@@ -250,7 +250,7 @@ class BLEOTPDevice(Device):
         except ed25519.BadSignatureError:
             print("Signature Failed")
             return False
-        except Exception as     e:
+        except Exception as e:
             print(str(e))
             return False
         return True
