@@ -37,6 +37,7 @@ def is_therapist(user):
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
+    print(request.user, request.user.is_authenticated ,request.user.is_verified())
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
@@ -44,21 +45,25 @@ def login_view(request, next=None):
         if user is not None:
             login(request, user)
             if next_url is not None:
-                return redirect(next_url)
+                return redirect("/web/verify/?next="+next_url)
             else:
-                return redirect("/web/patient/index/")
+                return redirect("/web/verify/")
         else:
             context = {
                 'next': next_url,
                 'error_msg': "Wrong username or password."
             }
             return render(request, "login.html", context)
-    else:
-        context = {
-            'next': next_url,
-            'error_msg': None
-        }
-        return render(request, "login.html", context)
+
+    if request.method == 'GET':
+        if (request.user.is_authenticated) and (not request.user.is_verified()):
+            return redirect("/web/verify/")
+        else:
+            context = {
+                'next': next_url,
+                'error_msg': None
+            }
+            return render(request, "login.html", context)
 
 
 def logout_view(request):
