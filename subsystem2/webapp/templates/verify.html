@@ -13,21 +13,43 @@
       <link href="/static/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
       <!-- Custom styles for this template-->
       <link href="css/sb-admin.css" rel="stylesheet">
+      <!-- Bootstrap core JavaScript-->
+      <script src="/static/vendor/jquery/jquery.min.js"></script>
+      <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+      <script>
+        $(function() {
+            $("#otp_device").change(function() {
+                var str = "";
+                $("#otp_device option:selected" ).each(function() {
+                    str += $(this).val() + " ";
+                });
+                $("#device_id").val(str);    
+            }).trigger('change');
+        });
+      </script>
    </head>
    <body class="bg-dark">
       <div class="container">
+         <form action="/web/account/challenge/" method="post" id="challenge-form">
+            <input type="hidden" name="device_id" id="device_id" value=""/>
+            {% csrf_token %}
+         </form>
+             
          <form action="." method="post" id="verify-form">
             <div class="card card-login mx-auto mt-5">
                 <div class="card-header">Verify Your 2FA Token</div>
                 <div class="card-body">
                     <p>Please connect your token to the PC.</p>
-                    <select name="otp_device">
-                        {% for d in devices %}
-                        <option value="{{d.persistent_id}}">{{d}}</option>
-                        {% endfor %}
-                    </select>{{ error_msg }}
                     <div>
-                        <input type="text" name="otp_token" id="otp" placeholder="Enter otp here" required="required"></input>
+                        <select id="otp_device" name="otp_device">
+                            {% for d in devices %}
+                            <option value="{{d.persistent_id}}">{{d}}</option>
+                            {% endfor %}
+                        </select>{{ error_msg }}
+                        <button type="submit" form="challenge-form">Connect</button>
+                    </div>
+                    <div>
+                        <input type="text" name="otp_token" id="otp" placeholder="Enter otp here" required="required"/>
                         <button type="submit" form="verify-form">Verify</button>
                     </div>
                     {% csrf_token %}
@@ -35,9 +57,6 @@
             </div>
         </form>
       </div>
-      <!-- Bootstrap core JavaScript-->
-      <script src="/static/vendor/jquery/jquery.min.js"></script>
-      <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
       <!-- Core plugin JavaScript-->
       <script src="/static/vendor/jquery-easing/jquery.easing.min.js"></script>
    </body>

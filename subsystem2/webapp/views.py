@@ -6,8 +6,9 @@ import urllib.parse
 import os.path
 from datetime import datetime
 import pytz
+import ed25519
 from django.shortcuts import get_object_or_404, render, redirect
-from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.encoding import escape_uri_path
 from django.views import View
@@ -16,7 +17,7 @@ from django.urls import reverse
 from django.db.models import Count, Sum, Q
 from django.utils.decorators import method_decorator
 from django.core.paginator import Paginator
-from django.contrib.auth import authenticate, login, logout
+from django.utils.crypto import get_random_string
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -102,15 +103,36 @@ def verify_view(request, next=None):
 
 
 # TODO change to ajax
-def challenge_view(request):
+def generate_challenge(request):
+    device_id = request.POST['device_id']
+    device = otp.models.Device.from_persistent_id(device_id)
     if not request.user.is_authenticated:
-        return {'error': 'not_authenticated'}
-    
+        return JsonResponse({'error': 'not_authenticated'})
+    if device_id is None or device is None:
+        return JsonResponse({'error': 'otp_device_does_not_exist'})
+
+    msg_to_be_signed = get_random_string(length=1024)
+    print(device_id, device)
+    device.otp_challenge = msg_to_be_signed
+    device.save()
+    return JsonResponse({'challenge': msg_to_be_signed})
 
 
 def logout_view(request):
     logout(request)
     return redirect("/web/account/login/")
+
+
+# TODO only admin can view
+def keygen_view(request):
+    private_key, public_key = ed25519.create_keypair()
+    private_key_str = private_key.to_ascii(encoding="hex").decode('ascii')
+    public_key_str = public_key.to_ascii(encoding="hex").decode('ascii')
+    context = {
+        'public_key': public_key_str,
+        'private_key': private_key_str
+    }
+    return render(request, 'keygen.html', context)
 
 
 @otp_required

@@ -1,4 +1,5 @@
 import random
+import ed25519
 from datetime import date
 from binascii import unhexlify
 from django.db import models
@@ -248,6 +249,9 @@ class BLEOTPDevice(Device):
             print("Signature Passed")
         except ed25519.BadSignatureError:
             print("Signature Failed")
+            return False
+        except Exception as     e:
+            print(str(e))
             return False
         return True
     

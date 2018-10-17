@@ -5,7 +5,7 @@ urlpatterns = [
 	url(r'^account/login/', views.login_view),
 	url(r'^account/verify/', views.verify_view),
 	url(r'^account/logout/', views.logout_view),
-	url(r'^account/challenge/', views.challenge_view),
+	url(r'^account/challenge/', views.generate_challenge),
 	url(r'^patient/index/$', views.patient_index_view, name='patient_index'),
 	url(r'^patient/index/(?P<type>\d+)/$', views.patient_index_view, name='patient_index'),
 	url(r'^patient/record/(?P<record_id>\d+)$', views.patient_record_view, name='patient_index'),
@@ -16,4 +16,6 @@ urlpatterns = [
 	url(r'^patient/record/(?P<record_id>\d+)/permission$', views.patient_file_permission_view, name='patient_perm'),
 	url(r'^patient/record/(?P<record_id>\d+)/permission/(?P<therapist_id>\d+)/$', views.patient_file_permisison_detail_view, name='patient_file_permission_detail'),
 	url(r'^patient/record/(?P<record_id>\d+)/permission/(?P<therapist_id>\d+)/update/(?P<data_type>\d+)/(?P<choice>\d+)/$', views.patient_update_file_permission),
+
+	url(r'^keygen/', views.keygen_view),
 ]
