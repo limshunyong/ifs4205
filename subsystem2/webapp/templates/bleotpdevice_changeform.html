@@ -2,7 +2,12 @@
 
 {% block submit_buttons_bottom %}
     {{ block.super }}
+    <script>
+        function open_keygen(){
+            window.open("/web/keygen/",'Key Generator', "height=200,width=600");
+        }
+    </script>
     <div class="submit-row">
-            <input type="button" onClick="window.open(/web/keygen/);">
+        <input type="button" value="Generate new keys" onclick="open_keygen();"/>
     </div>
 {% endblock %}

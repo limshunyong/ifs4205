@@ -1,9 +1,7 @@
-{% extends "base.html" %}
 
-{% block content %}
 <div class="container">
-    <p>Public key: {{ public_key }}</p>
-    <p>Private key: {{ private_key }}</p>
+    <h5>Key Generator</h5>
+    <p>Verifying key (copy to the 'Key' field): {{ public_key }}</p>
+    <p>Signing key (write to the tag): {{ private_key }}</p>
 
 </div>
-{% endblock %}
