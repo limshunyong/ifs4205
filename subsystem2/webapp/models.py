@@ -1,3 +1,4 @@
+import random
 from datetime import date
 from binascii import unhexlify
 from django.db import models
@@ -226,27 +227,27 @@ class UserProfile(models.Model):
 
 
 class BLEOTPDevice(Device):
-     key = models.CharField(max_length=1000,
-                           validators=[hex_validator()],
-                           default=lambda: random_hex(20),
-                           help_text=u'A hex-encoded secret key of up to 40 bytes.')
+    key = models.CharField(max_length=64, default="")
+    otp_challenge = models.CharField(max_length=1024, default="")
+
+    class Meta:
+        verbose_name = 'BLE OTP Device'
+        verbose_name_plural = 'BLE OTP Devices'
 
     @property
     def bin_key(self):
-        return unhexlify(self.key)
+        return ed25519.VerifyingKey(self.key.encode('ascii'), encoding='hex')
 
-    def verify_token(self, token):
+    def verify_token(self, sig):
         """
-        Try to verify ``token`` against the current and previous TOTP value.
+        Try to verify ``sig`` against the saved otp_challenge
         """
         try:
-            token = int(token)
-        except ValueError:
-            verified = False
-        else:
-            verified = any(totp(self.bin_key, drift=drift) == token for drift in [0, -1])
-
-        return verified
-
-    def generate_challenge():
-        pass
+            verifying_key = self.bin_key
+            verifying_key.verify(sig, self.otp_challenge, encoding="base64")
+            print("Signature Passed")
+        except ed25519.BadSignatureError:
+            print("Signature Failed")
+            return False
+        return True
+    
