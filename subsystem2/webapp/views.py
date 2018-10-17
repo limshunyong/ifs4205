@@ -20,6 +20,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+import django_otp as otp
+from django_otp.decorators import otp_required
 
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, READ_ONLY, FULL_ACCESS, IMAGE_DATA, TIME_SERIES_DATA,\
@@ -45,9 +47,9 @@ def login_view(request, next=None):
         if user is not None:
             login(request, user)
             if next_url is not None:
-                return redirect("/web/verify/?next="+next_url)
+                return redirect("/web/account/verify/?next="+next_url)
             else:
-                return redirect("/web/verify/")
+                return redirect("/web/account/verify/")
         else:
             context = {
                 'next': next_url,
@@ -57,7 +59,7 @@ def login_view(request, next=None):
 
     if request.method == 'GET':
         if (request.user.is_authenticated) and (not request.user.is_verified()):
-            return redirect("/web/verify/")
+            return redirect("/web/account/verify/")
         else:
             context = {
                 'next': next_url,
@@ -66,12 +68,52 @@ def login_view(request, next=None):
             return render(request, "login.html", context)
 
 
+def verify_view(request, next=None):
+    next_url = request.GET.get('next')
+    print(request.user, request.user.is_authenticated ,request.user.is_verified())
+    if not request.user.is_authenticated:
+        return redirect("/web/account/login/")
+    
+    # Verify static token
+    if request.method == 'POST':
+        token = request.POST['otp_token']
+        device_id = request.POST['otp_device']
+        device = otp.models.Device.from_persistent_id(device_id)
+        print("token",token, "device", device)
+        if token and device:
+            if otp.match_token(request.user, token):
+                otp.login(request, device)
+                if next_url is not None:
+                    return redirect(next_url)
+                else:
+                    return redirect("/web/patient/index/")
+            else:
+                context = {
+                    'devices': otp.devices_for_user(request.user),
+                    'error_msg': 'Wrong token'
+                }
+                return render(request, "verify.html", context)
+        return render(request, "verify.html")
+
+    context = {
+        'devices': otp.devices_for_user(request.user)
+    }
+    return render(request, "verify.html", context)
+
+
+# TODO change to ajax
+def challenge_view(request):
+    if not request.user.is_authenticated:
+        return {'error': 'not_authenticated'}
+    
+
+
 def logout_view(request):
     logout(request)
-    return redirect("/web/login/")
+    return redirect("/web/account/login/")
 
 
-@login_required
+@otp_required
 def patient_index_view(request, type=None):
     # TODO add pagination
     patient = request.user.userprofile.patient
@@ -84,7 +126,7 @@ def patient_index_view(request, type=None):
     }
     return render(request, 'patient_index.html', context)
 
-@login_required
+@otp_required
 def patient_record_view(request, record_id):
     print(record_id)
 
@@ -133,7 +175,7 @@ def patient_record_view(request, record_id):
         return HttpResponseForbidden()
 
 
-@login_required
+@otp_required
 @user_passes_test(is_therapist)
 def therapist_upload_data(request):
     therapist = request.user.userprofile.therapist
@@ -171,7 +213,7 @@ def therapist_upload_data(request):
         return HttpResponse("Posted")
 
 
-@login_required
+@otp_required
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
     context = {
@@ -179,7 +221,7 @@ def patient_permission_view(request):
     }
     return render(request, 'patient_permission.html', context)
 
-@login_required
+@otp_required
 def patient_file_permission_view(request, record_id):
     print('in')
     patient = request.user.userprofile.patient
@@ -189,7 +231,7 @@ def patient_file_permission_view(request, record_id):
     }
     return render(request, 'patient_file_permission.html', context)
 
-@login_required
+@otp_required
 def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)
@@ -199,7 +241,7 @@ def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
     }
     return render(request, 'patient_file_permission_detail.html', context)
 
-@login_required
+@otp_required
 def patient_permission_detail_view(request, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)
@@ -209,7 +251,7 @@ def patient_permission_detail_view(request, therapist_id=None):
     return render(request, 'patient_permission_detail.html', context)
 
 
-@login_required
+@otp_required
 def patient_update_permission(request, therapist_id=None, data_type=None, choice=None):
     if (therapist_id is None) or (data_type is None) or (choice is None):
         raise Http404
@@ -233,7 +275,7 @@ def patient_update_permission(request, therapist_id=None, data_type=None, choice
     return redirect('/web/patient/permission/'+str(therapist.id))
 
 
-@login_required
+@otp_required
 def patient_update_file_permission(request, record_id, therapist_id=None, data_type=None, choice=None):
     if (therapist_id is None) or (data_type is None) or (choice is None):
         raise Http404

@@ -2,8 +2,10 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-	url(r'^login/', views.login_view),
-	url(r'^logout/', views.logout_view),
+	url(r'^account/login/', views.login_view),
+	url(r'^account/verify/', views.verify_view),
+	url(r'^account/logout/', views.logout_view),
+	url(r'^account/challenge/', views.challenge_view),
 	url(r'^patient/index/$', views.patient_index_view, name='patient_index'),
 	url(r'^patient/index/(?P<type>\d+)/$', views.patient_index_view, name='patient_index'),
 	url(r'^patient/record/(?P<record_id>\d+)$', views.patient_record_view, name='patient_index'),
