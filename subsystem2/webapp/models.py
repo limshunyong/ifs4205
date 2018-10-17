@@ -1,10 +1,12 @@
 from datetime import date
+from binascii import unhexlify
 from django.db import models
 from django.contrib.auth.models import User as DjangoUser
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
+from django_otp.models import Device
 
 NO_ACCESS = 0
 READ_ONLY = 1
@@ -221,3 +223,30 @@ class UserProfile(models.Model):
     role = models.IntegerField(choices=ROLE_CHOICES, default=ROLE_PATIENT)
     patient = models.ForeignKey(Patient, blank=True, null=True, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, blank=True, null=True, on_delete=models.CASCADE)
+
+
+class BLEOTPDevice(Device):
+     key = models.CharField(max_length=1000,
+                           validators=[hex_validator()],
+                           default=lambda: random_hex(20),
+                           help_text=u'A hex-encoded secret key of up to 40 bytes.')
+
+    @property
+    def bin_key(self):
+        return unhexlify(self.key)
+
+    def verify_token(self, token):
+        """
+        Try to verify ``token`` against the current and previous TOTP value.
+        """
+        try:
+            token = int(token)
+        except ValueError:
+            verified = False
+        else:
+            verified = any(totp(self.bin_key, drift=drift) == token for drift in [0, -1])
+
+        return verified
+
+    def generate_challenge():
+        pass
