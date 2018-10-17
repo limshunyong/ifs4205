@@ -4,9 +4,8 @@ from . import views
 urlpatterns = [
 	url(r'^account/login/$', views.login_view, name='login'),
 	url(r'^account/otp/$', views.otp_view, name='select_otp'),
-	url(r'^account/challenge/$', views.challenge_view),
-	url(r'^account/verify/static/$', views.verify_static),
-	url(r'^account/verify/signature/$', views.verify_signature),
+	url(r'^account/otp/verify/$', views.verify_otp),
+	url(r'^account/otp/challenge/$', views.challenge_view),
 	url(r'^account/logout/$', views.logout_view),
 	url(r'^patient/index/$', views.patient_index_view, name='patient_index'),
 	url(r'^patient/index/(?P<type>\d+)/$', views.patient_index_view, name='patient_index'),

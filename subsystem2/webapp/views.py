@@ -23,10 +23,10 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 import django_otp as otp
 from django_otp.decorators import otp_required
-
+from django_otp.plugins.otp_static.models import StaticDevice
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, READ_ONLY, FULL_ACCESS, IMAGE_DATA, TIME_SERIES_DATA,\
-MOVIE_DATA, DOCUMENT_DATA 
+MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import UploadDataForm
 from .object import put_object, get_object
 
@@ -73,29 +73,34 @@ def otp_view(request, next=None):
     return render(request, "otp.html", context)
 
 
-def verify_static(request):
+def verify_otp(request):
     if not request.user.is_authenticated:
         return redirect(reverse('login'))
-    # Verify static token
+
     if request.method == 'POST':
         token = request.POST['otp_token']
         device_id = request.POST['otp_device']
         device = otp.models.Device.from_persistent_id(device_id)
+        print(str(type(device)), isinstance(device, otp.plugins.otp_static.models.StaticDevice))
         if token and device:
-            if otp.match_token(request.user, token):
+            if isinstance(device, StaticDevice) and otp.match_token(request.user, token):
+                print("========static ok")
+                # Verify static token
                 otp.login(request, device)
+                # TODO redirect by account type
+                return redirect(reverse('patient_index'))
+            elif isinstance(device, BLEOTPDevice) and device.verify_token(token):
+                print("========ble ok")
+                otp.login(request, device)
+                # TODO redirect by account type
                 return redirect(reverse('patient_index'))
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
                 return redirect(reverse('select_otp'))
         else:
+            messages.add_message(request, messages.ERROR, "token or device_id not set.")
             return redirect(reverse('select_otp'))
     return redirect(reverse('select_otp'))
-
-
-def verify_signature(request):
-    pass
-
 
 
 def challenge_view(request):
@@ -111,9 +116,22 @@ def challenge_view(request):
     print(device_id, device)
     device.otp_challenge = msg_to_be_signed
     device.save()
+
+    # TODO remove test code below
+    signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
+    print('verifying_key', device.key)
+    print('signing_key', signing_key_str)
+    verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
+    signing_key =  ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
+    sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
+    print('challenge', msg_to_be_signed)
+    print('signature', sig)
+    verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
+
     context = {
         'error_msg': error_msg,
-        'challenge': msg_to_be_signed
+        'challenge': msg_to_be_signed,
+        'device_id': request.POST['device_id']
     } 
     return render(request, 'challenge.html', context)
 

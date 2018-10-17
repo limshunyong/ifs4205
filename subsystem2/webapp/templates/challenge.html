@@ -19,10 +19,12 @@
    </head>
    <body class="bg-dark">
       <div class="container">
-         <form action="." method="post" id="challenge-form">
-            <input type="hidden" name="device_id" id="device_id" value=""/>
-            <input type="hidden" name="signature" id="signature" value=""/>
+         <form action="/web/account/otp/verify/" method="post" id="challenge-form">
+             <!-- TODO: HIDE THIS AND REMOVE SUBMIT BUTTON -->
+            <input type="text" name="otp_device" id="otp_device" value="{{ device_id }}"/>
+            <input type="text" name="otp_token" id="otp_token" placeholder="Enter signature" value=""/>
             {% csrf_token %}
+            <button type="submit" form="challenge-form">Verify</button>
          </form>
          <div class="card card-login mx-auto mt-5">
             <div class="card-header">Verifying</div>

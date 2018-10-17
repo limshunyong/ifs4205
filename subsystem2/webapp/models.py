@@ -245,13 +245,18 @@ class BLEOTPDevice(Device):
         """
         try:
             verifying_key = self.bin_key
-            verifying_key.verify(sig, self.otp_challenge, encoding="base64")
+            print("========= BLEOPTDevice:verify_token() ============")
+            print("Using verifying key", str(verifying_key.to_ascii(encoding="hex")))
+            print("Using signature:", sig)
+            print("Original challenge:", self.otp_challenge)
+            print("Encoding: base64")
+            verifying_key.verify(sig, self.otp_challenge.encode('ascii'), encoding="base64")
             print("Signature Passed")
         except ed25519.BadSignatureError:
             print("Signature Failed")
             return False
         except Exception as e:
-            print(str(e))
+            print("Signature Failed", str(e))
             return False
         return True
     

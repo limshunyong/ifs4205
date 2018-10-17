@@ -30,12 +30,12 @@
    </head>
    <body class="bg-dark">
       <div class="container">
-         <form action="/web/account/challenge/" method="POST" id="challenge-form">
+         <form action="/web/account/otp/challenge/" method="POST" id="challenge-form">
             <input type="hidden" name="device_id" id="device_id" value=""/>
             {% csrf_token %}
          </form>
              
-         <form action="/web/account/verify/static/" method="POST" id="verify-form">
+         <form action="/web/account/otp/verify/" method="POST" id="verify-form">
             <div class="card card-login mx-auto mt-5">
                 <div class="card-header">Verify Your 2FA Token</div>
                 <div class="card-body">
