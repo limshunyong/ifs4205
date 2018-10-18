@@ -12,3 +12,9 @@ python3.6/
 python3/
 *.pyc
 db.sqlite3
+.idea/IFS4205.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/workspace.xml
+.vscode/
