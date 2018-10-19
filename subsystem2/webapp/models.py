@@ -10,20 +10,6 @@ from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django_otp.models import Device
 
-NO_ACCESS = 0
-READ_ONLY = 1
-WRITE_ONLY = 2
-FULL_ACCESS = 3
-
-
-PERMISSION_SCOPES = (
-    (NO_ACCESS, 'No Access'),
-    (READ_ONLY, 'Read Only'),
-    (WRITE_ONLY, 'Write Only'),
-    (FULL_ACCESS, 'Read / Write')
-)
-
-
 IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
 MOVIE_DATA = 2
@@ -34,6 +20,7 @@ DATA_TYPES = (
     (MOVIE_DATA, 'Movie'),
     (DOCUMENT_DATA, 'Document')
 )
+
 
 def no_future_date(value):
     today = date.today()
@@ -56,7 +43,8 @@ class Patient(models.Model):
     address = models.CharField(max_length=100, blank=False)
     contact_number = models.CharField(max_length=12, blank=False)
     date_of_birth = models.DateField('birthday', validators=[no_future_date])
-
+    # default permission for new (Patient, Therapist) relationship
+    read_access = models.BooleanField(default=True)
     def __str__(self):
         return 'patient id: %d, name: %s' % (self.id, self.name)
 
@@ -76,10 +64,7 @@ class IsAPatientOf(models.Model):
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE)
-    image_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    timeseries_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    movie_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    document_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
+    read_access = models.BooleanField(default=True)
 
     def __str__(self):
         return '%s is patient of %s %s' % (self.patient.name, self.therapist.designation, self.therapist.name)
@@ -101,13 +86,9 @@ class Ward(models.Model):
     name = models.CharField(max_length=100, blank=False)
     patients = models.ManyToManyField(Patient, blank=True)
     therapists = models.ManyToManyField(Therapist, blank=True)
-    image_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    timeseries_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    movie_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-    document_access = models.IntegerField(choices=PERMISSION_SCOPES, default=1)
-
     def __str__(self):
         return 'ward id: %d, name: %s' % (self.id, self.name)
+
 
 @receiver(m2m_changed, sender=Ward.patients.through)
 @receiver(m2m_changed, sender=Ward.therapists.through)
@@ -132,11 +113,8 @@ def add_IsAPatientOf(sender, instance, **kwargs):
                     print('Not patient, will create')
                     rs = IsAPatientOf(
                         patient=p, therapist=t, 
-                        image_access=instance.image_access,
-                        movie_access=instance.movie_access,
-                        timeseries_access=instance.timeseries_access,
-                        document_access=instance.document_access
-                        )
+                        read_access=instance.read_access,
+                    )
                     rs.save()
 
 
@@ -153,7 +131,7 @@ class VisitRecord(models.Model):
 class HealthData(models.Model):
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False)
+    creator = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
     minio_filename = models.CharField(max_length=100, blank=False)
@@ -161,42 +139,10 @@ class HealthData(models.Model):
     date = models.DateTimeField('created on', auto_now_add=True)
 
     def __str__(self):
-        return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
+        return '%s %s, patient: [%d] %s, creator: [%d] %s' % (
             self.title,
             [item[1] for item in DATA_TYPES if item[0] == self.data_type],
-            self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
-
-# Update permissions for all of Patient X's therapist
-@receiver(post_save, sender=HealthData)
-def update_permissions(sender, instance, **kwargs):
-    list_patient_therapist = IsAPatientOf.objects.filter(patient=instance.patient)
-
-    for rs in list_patient_therapist:
-        existing_record = HealthDataPermission.objects.filter(
-            health_data=instance, therapist=rs.therapist, patient=instance.patient
-            )[:1]
-
-        if not existing_record:
-            p = 0
-            if instance.therapist == rs.therapist:
-                # Creator of health data should have full access
-                p = FULL_ACCESS
-            elif instance.data_type == '0':
-                p = rs.image_access
-            elif instance.data_type == '1':
-                p = rs.timeseries_access
-            elif instance.data_type == '2':
-                p = rs.movie_access
-            elif instance.data_type == '3':
-                p = rs.document_access
-
-            HealthDataPermission(
-                    health_data=instance, patient=instance.patient, 
-                    therapist=rs.therapist, 
-                    permission=p
-                    ).save()
-
-            print ('Applied permissions for %s' % rs.therapist.name)
+            self.patient.id, self.patient.name, self.creator.id, self.creator.name)
 
 
 class HealthDataPermission(models.Model):
@@ -204,12 +150,13 @@ class HealthDataPermission(models.Model):
     health_data = models.ForeignKey(HealthData, on_delete=models.CASCADE)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE)
-    permission = models.IntegerField(choices=PERMISSION_SCOPES, blank=False)
+    read_access = models.BooleanField(default=True)
     date = models.DateTimeField('last updated on', auto_now_add=True)
     # TODO: On save, modifiy date
 
     def __str__(self):
         return '%s <-> %s <-> %s' % (self.health_data, self.patient, self.therapist)
+
 
 class UserProfile(models.Model):
     """Extends Django's built-in user model"""

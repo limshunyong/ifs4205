@@ -25,7 +25,7 @@ import django_otp as otp
 from django_otp.decorators import otp_required
 from django_otp.plugins.otp_static.models import StaticDevice
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
-HealthDataPermission, UserProfile, DATA_TYPES, READ_ONLY, FULL_ACCESS, IMAGE_DATA, TIME_SERIES_DATA,\
+HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import UploadDataForm
 from .object import put_object, get_object
@@ -166,6 +166,7 @@ def patient_index_view(request, type=None):
     }
     return render(request, 'patient_index.html', context)
 
+
 @otp_required
 def patient_record_view(request, record_id):
     print(record_id)
@@ -175,41 +176,38 @@ def patient_record_view(request, record_id):
         'record_id':  record_id
     }
 
-    # hardcoded value for the first demo. to be removed
-    if record_id == "1":
-        return render(request, 'patient_record_bp.html', context)
-    # elif record_id == "2":
-    #     return render(request, 'patient_record_image.html', context)
-    # elif record_id == "3":
-    #     return render(request, 'patient_record_movie.html', context)
-    # else:
-    #     return render(request, 'patient_index.html', context)
-
     user = request.user.userprofile
     if user.role == UserProfile.ROLE_PATIENT:
         print(user.patient)
-        obj = get_object_or_404(HealthData, Q(pk=record_id, patient=user.patient))
+        health_data = get_object_or_404(HealthData, Q(pk=record_id, patient=user.patient))
     elif user.role == UserProfile.ROLE_THERAPIST:
         print(user.therapist)
-        obj =  get_object_or_404(HealthDataPermission,
-            Q(health_data__id=record_id, therapist=user.therapist, permission=READ_ONLY) | 
-            Q(health_data__id=record_id, therapist=user.therapist, permission=FULL_ACCESS)).health_data
+        health_data = get_object_or_404(HealthData, pk=record_id)
+        # verify permission
+        # TODO refactor below as a function
+        is_a_patient_of = get_object_or_404(IsAPatientOf, patient=health_data.patient, therapist=user.therapist)
+        health_data_permission = HealthDataPermission.objects.get(health_data__id=record_id, therapist=user.therapist)
+        if (health_data_permission and not health_data_permission.read_access) or \
+            (not is_a_patient_of.read_access):
+            messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
+            return render(request, 'therapist_error.html', context)
 
-    print(obj.data_type)
-    print(obj.minio_filename)
 
-    obj_link = get_object(obj.minio_filename)
+    print(health_data.data_type)
+    print(health_data.minio_filename)
+
+    obj_link = get_object(health_data.minio_filename)
     print(obj_link)
 
-    if obj.data_type == IMAGE_DATA:
+    if health_data.data_type == IMAGE_DATA:
         context['obj_link'] = obj_link
         return render(request, 'patient_record_image.html', context)
-    elif obj.data_type == MOVIE_DATA:
+    elif health_data.data_type == MOVIE_DATA:
         context['obj_link'] = obj_link
         return render(request, 'patient_record_movie.html', context)
-    elif obj.data_type == TIME_SERIES_DATA:
+    elif health_data.data_type == TIME_SERIES_DATA:
         return HttpResponse('To implement.')
-    elif obj.data_type == DOCUMENT_DATA:
+    elif health_data.data_type == DOCUMENT_DATA:
         return HttpResponse('To implement.')
     else:
         return HttpResponseForbidden()
