@@ -88,9 +88,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql', 
         'NAME': 'subsystem2',
-        'USER': 'capstone',
-        'PASSWORD': '12345678',
-        'HOST': '127.0.0.1',
+        'USER': 'admin',
+        'PASSWORD': 'admin',
+        'HOST': 'mysql_db',
         'PORT': '3306',
     }
 }
