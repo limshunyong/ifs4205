@@ -31,6 +31,7 @@ Database credentials are read from two config files when building the image, nam
 
 - subsystem2/my.cnf: settings for django's db connector 
 - config/mysql.env: settings for mysql initialisation
+
 For production environment, it is important to change this pair of default credentials before each deployment.
 
 > TODO: one possible solution maybe to create a copy of these files on the server, and use git post-receive hook to overwrite the defaults.
