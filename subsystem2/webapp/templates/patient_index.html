@@ -41,7 +41,7 @@
                               <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
                               <td>{{ r.therapist.name }}</td>
                               <td>{{ r.type }}</td>
-                              <td><button type="button" class="btn btn-info">Review</button></td>
+                              <td><a href="/web/patient/record/{{ r.id }}/permission" target="_blank"><button type="button" class="btn btn-info">Review</button></a></td>
                             </tr>
                           {% endfor %}
                         {% else %}
