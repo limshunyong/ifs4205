@@ -239,7 +239,7 @@ def therapist_upload_data(request):
 
         patient_data = HealthData(
             patient=Patient.objects.get(pk=patient_id),
-            therapist=therapist,
+            creator=therapist,
             data_type=request.POST['data_type'],
             title=file.name,
             description='',
