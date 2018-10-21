@@ -6,14 +6,9 @@ services:
     container_name: mysql_db
     restart: always
     image: mysql:latest
-    ports:
-      - "3306:3306"
     command: --default-authentication-plugin=mysql_native_password
-    environment:
-      MYSQL_ROOT_PASSWORD: 'toor' # TODO: Change this
-      MYSQL_DATABASE: 'subsystem2'
-      MYSQL_USER: 'admin'
-      MYSQL_PASSWORD: 'admin'
+    env_file:
+      - mysql_docker.env
     volumes:
       - db-data-volume:/var/lib/mysql
 
