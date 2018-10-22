@@ -16,3 +16,11 @@ class UploadDataForm(forms.Form):
     patient.widget.attrs = {'class':'form-control'}
     data_type.widget.attrs = {'class':'form-control'}
     file.widget.attrs = {'class':'form-control'}
+
+class PermissionForm(forms.Form):
+    TRUE_FALSE_CHOICES = (
+    (True, 'Read Access'),
+    (False, 'No Access')
+    )
+
+    permission = forms.ChoiceField(choices = TRUE_FALSE_CHOICES, label="Permission", widget=forms.Select(), required=True)
