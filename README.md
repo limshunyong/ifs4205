@@ -21,4 +21,7 @@
 ```
 
 3. Run
-> ./manage.py runserver
+> ./manage.py runserver --settings=subsystem2.settings.local
+
+### Docker Setup
+See docs/docker_setup_guide.md.
