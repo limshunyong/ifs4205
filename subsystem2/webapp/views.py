@@ -29,6 +29,7 @@ HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm 
 from .object import put_object, get_object
+from django.contrib import messages
 
 
 # user_passes_test helper functions
@@ -266,13 +267,11 @@ def patient_upload_data(request):
 
     if request.method == 'GET':
         context = {
-            'user': request.user,
-            #'upload_data_form': UploadPatientDataForm(therapist_id=patient.pk)
+            'user': request.user
         }
         return render(request, 'patient_upload.html', context)
 
     elif request.method == 'POST' and request.FILES['file']:
-        #form = UploadPatientDataForm(request.POST, patient_id=patient.pk)
 
         # TODO: Implement Form Validation, Clean Up
         #if form.isValid():
@@ -281,7 +280,6 @@ def patient_upload_data(request):
         file = request.FILES['file']
         _, file_extension = os.path.splitext(file.name)
 
-        print(file_extension)
         if file_extension == '.jpg' or file_extension == '.png':
             data_type = 0
         elif file_extension == 'csv':
@@ -291,7 +289,11 @@ def patient_upload_data(request):
         elif file_extension == '.doc' or file_extension == '.txt':
             data_type = 3
         else:
-            return HttpResponse("Invalid file type")
+            messages.error(request, 'Invalid file type')
+            context = {
+                'user': request.user
+            }
+            return render(request, 'patient_upload.html', context)
 
         patient_id = patient.id
         minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
@@ -299,7 +301,6 @@ def patient_upload_data(request):
 
         patient_data = HealthData(
             patient=Patient.objects.get(pk=patient_id),
-            therapist=request.user.userprofile.therapist,
             data_type=data_type,
             title=file.name,
             description='',
@@ -308,9 +309,13 @@ def patient_upload_data(request):
 
         patient_data.save()
 
-        return HttpResponse("Posted")
-		
-		
+        messages.success(request, 'File upload successful')
+        context = {
+            'user': request.user,
+        }
+        return render(request, 'patient_upload.html', context)
+
+
 @otp_required
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
