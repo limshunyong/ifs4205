@@ -38,6 +38,13 @@ def is_therapist(user):
     except:
         return False
 
+# user_passes_test helper functions
+def is_patient(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_PATIENT
+    except:
+        return False
+
 def login_view(request, next=None):
     next_url = request.GET.get('next')
     print(request.user, request.user.is_authenticated ,request.user.is_verified())
@@ -87,8 +94,10 @@ def verify_otp(request):
                 print("========static ok")
                 # Verify static token
                 otp.login(request, device)
-                # TODO redirect by account type
-                return redirect(reverse('patient_index'))
+                if request.user.userprofile.role == UserProfile.ROLE_PATIENT:
+                    return redirect(reverse('patient_index'))
+                elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
+                    return redirect(reverse('therapist_index'))
             elif isinstance(device, BLEOTPDevice) and device.verify_token(token):
                 print("========ble ok")
                 otp.login(request, device)
@@ -154,11 +163,17 @@ def keygen_view(request):
 
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_index_view(request, type=None):
+    r  = request.user.userprofile.role
+
     # TODO add pagination
     patient = request.user.userprofile.patient
-    records = HealthData.objects.filter(patient=patient, data_type=type)
-    print(records)
+    if type:
+        records = HealthData.objects.filter(patient=patient, data_type=type)
+    else:
+        records = HealthData.objects.filter(patient=patient)
+
     context = {
         'user': request.user,
         'type': type,
@@ -166,6 +181,50 @@ def patient_index_view(request, type=None):
     }
     return render(request, 'patient_index.html', context)
 
+@otp_required
+@user_passes_test(is_therapist)
+def therapist_index_view(request, patient_id=None):
+    therapist = request.user.userprofile.therapist
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id) if patient_id else None
+    context = {
+        'therapist_patients': therapist_patients,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'therapist_index.html', context)
+
+@otp_required
+@user_passes_test(is_therapist)
+def patient_detail_view(request, patient_id):
+    therapist = request.user.userprofile.therapist
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id)
+    context = {
+        'therapist_patients': therapist_patients,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'patient_detail.html', context)
+
+@otp_required
+@user_passes_test(is_therapist)
+def therapist_list_patient_record_view(request, patient_id=None, type=None):
+    therapist = request.user.userprofile.therapist
+    # Ensure that there is a Therapist <--> Patient relationship
+    get_object_or_404(IsAPatientOf, therapist=therapist, patient_id=patient_id)
+
+    if type:
+        records = HealthData.objects.filter(patient_id=patient_id, data_type=type)
+    else:
+        records = HealthData.objects.filter(patient_id=patient_id)
+
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = Patient.objects.get(id=patient_id)
+    context = {
+        'therapist_patients': therapist_patients,
+        'records': records,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'therapist_index.html', context)
 
 @otp_required
 def patient_record_view(request, record_id):
@@ -178,20 +237,27 @@ def patient_record_view(request, record_id):
 
     user = request.user.userprofile
     if user.role == UserProfile.ROLE_PATIENT:
-        print(user.patient)
         health_data = get_object_or_404(HealthData, Q(pk=record_id, patient=user.patient))
     elif user.role == UserProfile.ROLE_THERAPIST:
-        print(user.therapist)
+        therapist = request.user.userprofile.therapist;
         health_data = get_object_or_404(HealthData, pk=record_id)
-        # verify permission
         # TODO refactor below as a function
-        is_a_patient_of = get_object_or_404(IsAPatientOf, patient=health_data.patient, therapist=user.therapist)
-        health_data_permission = HealthDataPermission.objects.get(health_data__id=record_id, therapist=user.therapist)
-        if (health_data_permission and not health_data_permission.read_access) or \
-            (not is_a_patient_of.read_access):
-            messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
-            return render(request, 'therapist_error.html', context)
 
+        # Check if therapist has permissions
+        # 1. Check explicit permissions
+        try:
+            p = HealthDataPermission.objects.get(therapist=therapist, health_data_id=record_id)
+            if p.read_access == False:
+                messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
+                return render(request, 'therapist_error.html', context)
+        except HealthDataPermission.DoesNotExist:
+            # 2. Check default permissions
+            p = get_object_or_404(IsAPatientOf, therapist=therapist, patient=health_data.patient)
+            if p.read_access == False:
+                messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
+                return render(request, 'therapist_error.html', context)
+        # for sidebar
+        context['therapist_patients'] = Patient.objects.filter(isapatientof__therapist=therapist)
 
     print(health_data.data_type)
     print(health_data.minio_filename)
@@ -248,10 +314,11 @@ def therapist_upload_data(request):
 
         patient_data.save()
 
-        return HttpResponse("Posted")
+        return redirect(reverse(patient_record_view, kwargs={'record_id': patient_data.id}))
 
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
     therapists = list(map(lambda x: {
@@ -269,6 +336,7 @@ def patient_permission_view(request):
     return render(request, 'patient_permission.html', context)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_file_permission_view(request, record_id):
     patient = request.user.userprofile.patient
 
@@ -304,6 +372,7 @@ def patient_file_permission_view(request, record_id):
     return render(request, 'patient_file_permission.html', context)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)
@@ -339,6 +408,7 @@ def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
             return redirect('/web/patient/record/%s/permission/' % record_id)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_permission_detail_view(request, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)

@@ -1,5 +1,30 @@
 <!-- Sidebar -->
 <ul class="sidebar navbar-nav">
+
+  {% if user.userprofile.role == ROLE_THERAPIST %}
+  <h6 class="dropdown-header">My Patients:</h6>
+
+  {% for p in therapist_patients %}
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      <i class="fas fa-fw fa-user"></i>
+      <span>{{ p.name }}</span>
+    </a>
+    <div class="dropdown-menu" aria-labelledby="pagesDropdown">
+      <a class="dropdown-item" href="/web/therapist/patient/{{ p.id }}/">All Records</a>
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item" href="/web/therapist/patient/{{ p.id }}/0">Images</a>
+      <a class="dropdown-item" href="/web/therapist/patient/{{ p.id }}/1">Time Series</a>
+      <a class="dropdown-item" href="/web/therapist/patient/{{ p.id }}/2">Movies</a>
+      <a class="dropdown-item" href="/web/therapist/patient/{{ p.id }}/3">Document</a>
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item" href="/web/patient/{{ p.id }}/detail">Patient Details</a>
+    </div>
+  </li>
+  {% endfor %}
+  {% endif %}
+
+  {% if user.userprofile.role == ROLE_PATIENT %}
   <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle" href="/web/patient/index/" role="button" >
       <i class="fas fa-fw fa-folder"></i>
@@ -30,10 +55,6 @@
       <span>Document</span>
     </a>
   </li>
-{# <li class="nav-item dropdown">
-  <a class="nav-link dropdown-toggle" href="/web/patient/index/" role="button">
-    <i class="fas fa-fw fa-folder"></i>
-    <span>Others</span>
-  </a> #}
-</li>
+  {% endif %}
+
 </ul>
