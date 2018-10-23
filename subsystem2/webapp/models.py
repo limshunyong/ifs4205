@@ -31,7 +31,7 @@ def no_future_date(value):
 class Patient(models.Model):
     MALE = 'MALE'
     FEMALE = 'FEMALE'
-    GENDER = (
+    SEX = (
         (MALE, 'MALE'),
         (FEMALE, 'FEMALE')
     )
@@ -39,7 +39,7 @@ class Patient(models.Model):
     name = models.CharField(max_length=100, blank=False)
     nric = models.CharField(max_length=9, blank=False,
                             validators=[RegexValidator('^[STFG]\d{7}[A-Z]$', message="Invalid NRIC")])
-    gender = models.CharField(max_length=6, blank=False, choices=GENDER, default=MALE)
+    sex = models.CharField(max_length=6, blank=False, choices=SEX, default=MALE)
     address = models.CharField(max_length=100, blank=False)
     contact_number = models.CharField(max_length=12, blank=False)
     date_of_birth = models.DateField('birthday', validators=[no_future_date])
