@@ -139,10 +139,16 @@ class HealthData(models.Model):
     date = models.DateTimeField('created on', auto_now_add=True)
 
     def __str__(self):
-        return '%s %s, patient: [%d] %s, creator: [%d] %s' % (
-            self.title,
-            [item[1] for item in DATA_TYPES if item[0] == self.data_type],
-            self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+        if self.therapist:
+            return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
+                self.title,
+                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+        else:
+            return '%s %s, patient: [%d] %s' % (
+                self.title,
+                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                self.patient.id, self.patient.name)
 
 
 class HealthDataPermission(models.Model):
