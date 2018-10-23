@@ -32,6 +32,17 @@ from .object import put_object, get_object
 from django.contrib import messages
 
 
+MAPPING = {
+    '.jpg': IMAGE_DATA,
+    '.png': IMAGE_DATA,
+    '.csv': TIME_SERIES_DATA,
+    '.mp4': MOVIE_DATA,
+    '.mpg': MOVIE_DATA,
+    '.doc': DOCUMENT_DATA,
+    '.txt': DOCUMENT_DATA
+}
+
+
 # user_passes_test helper functions
 def is_therapist(user):
     try:
@@ -39,14 +50,14 @@ def is_therapist(user):
     except:
         return False
 
-		
+
 def is_patient(user):
     try:
         return user.userprofile.role == UserProfile.ROLE_PATIENT
     except:
         return False
-		
-		
+
+
 def login_view(request, next=None):
     next_url = request.GET.get('next')
     print(request.user, request.user.is_authenticated ,request.user.is_verified())
@@ -280,19 +291,17 @@ def patient_upload_data(request):
         file = request.FILES['file']
         _, file_extension = os.path.splitext(file.name)
 
-        if file_extension == '.jpg' or file_extension == '.png':
-            data_type = 0
-        elif file_extension == '.csv':
-            data_type = 1
-        elif file_extension == '.mp4' or file_extension == '.mpg':
-            data_type = 2
-        elif file_extension == '.doc' or file_extension == '.txt':
-            data_type = 3
+
+        if file_extension in MAPPING.keys():
+            data_type = MAPPING[file_extension]
+            
         else:
             messages.error(request, 'Invalid file type')
+
             context = {
                 'user': request.user
             }
+
             return render(request, 'patient_upload.html', context)
 
         patient_id = patient.id
@@ -300,7 +309,6 @@ def patient_upload_data(request):
 
         try:
             put_object(minio_filename, file.file, file.size)
-
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 data_type=data_type,
@@ -308,7 +316,6 @@ def patient_upload_data(request):
                 description='',
                 minio_filename=minio_filename
             )
-
             patient_data.save()
             messages.success(request, 'File upload successful')
 
