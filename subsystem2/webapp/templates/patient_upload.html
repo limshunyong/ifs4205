@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="wrapper">
+    {% include "sidebar.html" %}
+   <div id="content-wrapper">
+        <div class="card mb-3">
+	        <div class="card-header">
+		        <i class="fas fa-table"></i>
+		        Patient Upload Health Data Portal
+	        </div>
+	        <div class="card-body">
+		        <form action="/web/patient/upload/" method="post" id="upload-form" enctype="multipart/form-data">
+			        <div>
+                        <input type="file" name="file" required="required"/>
+                        {% csrf_token %}
+			        </div>
+                    <button type="submit" form="upload-form" class="btn btn-primary btn-block">Upload</button>
+                    {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+		        </form>
+	        </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

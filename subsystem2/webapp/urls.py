@@ -16,6 +16,7 @@ urlpatterns = [
 	url(r'^patient/record/(?P<record_id>\d+)/permission/(?P<therapist_id>\d+)/$', views.patient_file_permisison_detail_view, name='patient_file_permission_detail'),
 	url(r'^patient/permission/$', views.patient_permission_view, name='patient_perm'),
 	url(r'^patient/permission/(?P<therapist_id>\d+)/$', views.patient_permission_detail_view, name='patient_perm'),
+	url(r'^patient/upload/$', views.patient_upload_data, name='patient_upload_data'),
 
 	# Therapist Views
 	url(r'^therapist/index/$', views.therapist_index_view, name='therapist_index'),
@@ -24,5 +25,6 @@ urlpatterns = [
 	url(r'^therapist/patient/(?P<patient_id>\d+)/$', views.therapist_list_patient_record_view),
 	url(r'^therapist/patient/(?P<patient_id>\d+)/(?P<type>\d+)$', views.therapist_list_patient_record_view),
 	url(r'^therapist/upload$', views.therapist_upload_data, name='therapist_upload_data'),
+
 	url(r'^keygen/', views.keygen_view),
 ]

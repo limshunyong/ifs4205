@@ -131,7 +131,7 @@ class VisitRecord(models.Model):
 class HealthData(models.Model):
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    creator = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=False)
+    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=True, null=True)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
     minio_filename = models.CharField(max_length=100, blank=False)
@@ -139,10 +139,16 @@ class HealthData(models.Model):
     date = models.DateTimeField('created on', auto_now_add=True)
 
     def __str__(self):
-        return '%s %s, patient: [%d] %s, creator: [%d] %s' % (
-            self.title,
-            [item[1] for item in DATA_TYPES if item[0] == self.data_type],
-            self.patient.id, self.patient.name, self.creator.id, self.creator.name)
+        if self.therapist:
+            return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
+                self.title,
+                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
+        else:
+            return '%s %s, patient: [%d] %s' % (
+                self.title,
+                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                self.patient.id, self.patient.name)
 
 
 class HealthDataPermission(models.Model):

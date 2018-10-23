@@ -29,6 +29,18 @@ HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm 
 from .object import put_object, get_object
+from django.contrib import messages
+
+
+MAPPING = {
+    '.jpg': IMAGE_DATA,
+    '.png': IMAGE_DATA,
+    '.csv': TIME_SERIES_DATA,
+    '.mp4': MOVIE_DATA,
+    '.mpg': MOVIE_DATA,
+    '.doc': DOCUMENT_DATA,
+    '.txt': DOCUMENT_DATA
+}
 
 
 # user_passes_test helper functions
@@ -38,12 +50,14 @@ def is_therapist(user):
     except:
         return False
 
+
 # user_passes_test helper functions
 def is_patient(user):
     try:
         return user.userprofile.role == UserProfile.ROLE_PATIENT
     except:
         return False
+
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -305,7 +319,7 @@ def therapist_upload_data(request):
 
         patient_data = HealthData(
             patient=Patient.objects.get(pk=patient_id),
-            creator=therapist,
+            therapist=therapist,
             data_type=request.POST['data_type'],
             title=file.name,
             description='',
@@ -319,6 +333,63 @@ def therapist_upload_data(request):
 
 @otp_required
 @user_passes_test(is_patient)
+def patient_upload_data(request):
+    patient = request.user.userprofile.patient
+
+    if request.method == 'GET':
+        context = {
+            'user': request.user
+        }
+        return render(request, 'patient_upload.html', context)
+
+    elif request.method == 'POST' and request.FILES['file']:
+
+        # TODO: Implement Form Validation, Clean Up
+        #if form.isValid():
+        #	file = form.cleaned_data['file']
+
+        file = request.FILES['file']
+        _, file_extension = os.path.splitext(file.name)
+
+
+        if file_extension in MAPPING.keys():
+            data_type = MAPPING[file_extension]
+            
+        else:
+            messages.error(request, 'Invalid file type')
+
+            context = {
+                'user': request.user
+            }
+
+            return render(request, 'patient_upload.html', context)
+
+        patient_id = patient.id
+        minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+
+        try:
+            put_object(minio_filename, file.file, file.size)
+            patient_data = HealthData(
+                patient=Patient.objects.get(pk=patient_id),
+                data_type=data_type,
+                title=file.name,
+                description='',
+                minio_filename=minio_filename
+            )
+            patient_data.save()
+            messages.success(request, 'File upload successful')
+
+        except ResponseError as err:
+            print(err)
+            messages.error(request, 'File upload failed')
+
+        context = {
+            'user': request.user,
+        }
+        return render(request, 'patient_upload.html', context)
+
+
+@otp_required
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
     therapists = list(map(lambda x: {
