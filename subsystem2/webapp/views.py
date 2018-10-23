@@ -282,9 +282,9 @@ def patient_upload_data(request):
 
         if file_extension == '.jpg' or file_extension == '.png':
             data_type = 0
-        elif file_extension == 'csv':
+        elif file_extension == '.csv':
             data_type = 1
-        elif file_extension == 'mp4' or file_extension == 'mpg':
+        elif file_extension == '.mp4' or file_extension == '.mpg':
             data_type = 2
         elif file_extension == '.doc' or file_extension == '.txt':
             data_type = 3
