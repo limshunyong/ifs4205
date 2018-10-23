@@ -2,16 +2,33 @@
   <span class="navbar-brand mr-1">Welcome back, {{ user }}</span>
   <!-- Navbar -->
   <ul class="navbar-nav ml-auto align-items-end">
-    <li class="nav-item no-arrow mx-1">
-      <a class="nav-link" href="/web/patient/index">
-        My Records
-      </a>
-    </li>
-    <li class="nav-item no-arrow mx-1">
-      <a class="nav-link" href="/web/patient/permission/">
-        Privacy & Permission
-      </a>
-    </li>
+
+    {% if user.userprofile.role == ROLE_PATIENT %}
+      <li class="nav-item no-arrow mx-1">
+        <a class="nav-link" href="/web/patient/index">
+          My Records
+        </a>
+      </li>
+      <li class="nav-item no-arrow mx-1">
+        <a class="nav-link" href="/web/patient/permission/">
+          Privacy &amp; Permission
+        </a>
+      </li>
+    {% endif %}
+
+    {% if user.userprofile.role == ROLE_THERAPIST %}
+      <li class="nav-item no-arrow mx-1">
+        <a class="nav-link" href="/web/therapist/index">
+          My Patients
+        </a>
+      </li>
+      <li class="nav-item no-arrow mx-1">
+        <a class="nav-link" href="/web/therapist/upload">
+          Upload Data
+        </a>
+      </li>
+    {% endif %}
+
     <li class="nav-item dropdown no-arrow">
       <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         <i class="fas fa-user-circle fa-fw"></i>
