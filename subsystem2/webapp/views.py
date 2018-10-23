@@ -297,19 +297,25 @@ def patient_upload_data(request):
 
         patient_id = patient.id
         minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-        put_object(minio_filename, file.file, file.size)
 
-        patient_data = HealthData(
-            patient=Patient.objects.get(pk=patient_id),
-            data_type=data_type,
-            title=file.name,
-            description='',
-            minio_filename=minio_filename
-        )
+        try:
+            put_object(minio_filename, file.file, file.size)
 
-        patient_data.save()
+            patient_data = HealthData(
+                patient=Patient.objects.get(pk=patient_id),
+                data_type=data_type,
+                title=file.name,
+                description='',
+                minio_filename=minio_filename
+            )
 
-        messages.success(request, 'File upload successful')
+            patient_data.save()
+            messages.success(request, 'File upload successful')
+
+        except ResponseError as err:
+            print(err)
+            messages.error(request, 'File upload failed')
+
         context = {
             'user': request.user,
         }
