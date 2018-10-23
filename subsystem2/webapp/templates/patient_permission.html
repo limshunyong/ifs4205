@@ -1,34 +1,50 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="table-responsive">
-        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Designation</th>
-                    <th>Department</th>
-                    <th>Contact Number</th>
-                    <th>Permission</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if therapists %}
-                    {% for t in therapists %}
-                    <tr>
-                        <td>{{ t.name }}</td>
-                        <td>{{ t.designation }}</td>
-                        <td>{{ t.department }}</td>
-                        <td>{{ t.contact_number }}</td>
-                        <td><a href="/web/patient/permission/{{ t.id }}/">View</a><td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                <tr><td>No therapist.</td></tr>
-                {% endif %}
-            </tbody>
-        </table>
+<div id="wrapper">
+  {% include "sidebar.html" %}
+  <div id="content-wrapper">
+      <div class="container-fluid">
+          <main>
+            <div class="card mb-3">
+              <div class="card-header">
+                <i class="fas fa-table"></i>
+                Privacy &amp; Permission
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Department</th>
+                            <th>Contact Number</th>
+                            <th>Default Permission</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if therapists %}
+                            {% for t in therapists %}
+                            <tr>
+                                <td>{{ t.name }}</td>
+                                <td>{{ t.designation }}</td>
+                                <td>{{ t.department }}</td>
+                                <td>{{ t.contact_number }}</td>
+                                <td>{{ t.read_access }} (<a href="/web/patient/permission/{{ t.id }}/">Change</a>)</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr><td>No therapist.</td></tr>
+                        {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
     </div>
 </div>
+
 {% endblock %}
