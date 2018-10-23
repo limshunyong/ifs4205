@@ -38,6 +38,14 @@ def is_therapist(user):
     except:
         return False
 
+		
+def is_patient(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_PATIENT
+    except:
+        return False
+		
+		
 def login_view(request, next=None):
     next_url = request.GET.get('next')
     print(request.user, request.user.is_authenticated ,request.user.is_verified())
@@ -239,7 +247,7 @@ def therapist_upload_data(request):
 
         patient_data = HealthData(
             patient=Patient.objects.get(pk=patient_id),
-            creator=therapist,
+            therapist=therapist,
             data_type=request.POST['data_type'],
             title=file.name,
             description='',
@@ -251,6 +259,58 @@ def therapist_upload_data(request):
         return HttpResponse("Posted")
 
 
+@otp_required
+@user_passes_test(is_patient)
+def patient_upload_data(request):
+    patient = request.user.userprofile.patient
+
+    if request.method == 'GET':
+        context = {
+            'user': request.user,
+            #'upload_data_form': UploadPatientDataForm(therapist_id=patient.pk)
+        }
+        return render(request, 'patient_upload.html', context)
+
+    elif request.method == 'POST' and request.FILES['file']:
+        #form = UploadPatientDataForm(request.POST, patient_id=patient.pk)
+
+        # TODO: Implement Form Validation, Clean Up
+        #if form.isValid():
+        #	file = form.cleaned_data['file']
+
+        file = request.FILES['file']
+        _, file_extension = os.path.splitext(file.name)
+
+        print(file_extension)
+        if file_extension == '.jpg' or file_extension == '.png':
+            data_type = 0
+        elif file_extension == 'csv':
+            data_type = 1
+        elif file_extension == 'mp4' or file_extension == 'mpg':
+            data_type = 2
+        elif file_extension == '.doc' or file_extension == '.txt':
+            data_type = 3
+        else:
+            return HttpResponse("Invalid file type")
+
+        patient_id = patient.id
+        minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+        put_object(minio_filename, file.file, file.size)
+
+        patient_data = HealthData(
+            patient=Patient.objects.get(pk=patient_id),
+            therapist=request.user.userprofile.therapist,
+            data_type=data_type,
+            title=file.name,
+            description='',
+            minio_filename=minio_filename
+        )
+
+        patient_data.save()
+
+        return HttpResponse("Posted")
+		
+		
 @otp_required
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
