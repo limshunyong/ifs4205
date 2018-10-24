@@ -97,7 +97,7 @@ def add_IsAPatientOf(sender, instance, **kwargs):
     pk_set = kwargs.pop('pk_set', None)
     model = kwargs.pop('model', None)
 
-    # Create IsAPatientOf for every (Therapist, Patient) permutation 
+    # Create IsAPatientOf for every (Therapist, Patient) permutation
     # in a Ward and apply default Ward Policy
     if action == 'post_add':
         patients = instance.patients.all()
@@ -112,7 +112,7 @@ def add_IsAPatientOf(sender, instance, **kwargs):
                     # Create patient relationship and apply ward policy
                     print('Not patient, will create')
                     rs = IsAPatientOf(
-                        patient=p, therapist=t, 
+                        patient=p, therapist=t,
                         read_access=instance.read_access,
                     )
                     rs.save()
@@ -178,6 +178,7 @@ class UserProfile(models.Model):
     role = models.IntegerField(choices=ROLE_CHOICES, default=ROLE_PATIENT)
     patient = models.ForeignKey(Patient, blank=True, null=True, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, blank=True, null=True, on_delete=models.CASCADE)
+    researcher = models.ForeignKey(Researcher, blank=True, null=True, on_delete=models.CASCADE)
 
 
 class BLEOTPDevice(Device):
@@ -212,4 +213,4 @@ class BLEOTPDevice(Device):
             print("Signature Failed", str(e))
             return False
         return True
-    
+
