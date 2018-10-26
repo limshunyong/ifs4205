@@ -1,10 +1,15 @@
 from minio import Minio
 from minio.error import ResponseError
 from datetime import timedelta
+import os
+
+
+ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", default='')
+SECRET_KEY = os.getenv("MINIO_SECRET_KEY", default='')
 
 minioClient = Minio('localhost:9000',
-                    access_key='',
-                    secret_key='',
+                    access_key=ACCESS_KEY,
+                    secret_key=ACCESS_KEY,
                     secure=False)
 
 BUCKET_NAME = 'patientdata'

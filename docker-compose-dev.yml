@@ -12,6 +12,16 @@ services:
     volumes:
       - db-data-volume:/var/lib/mysql
 
+  # minio
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "10000:9000"
+    command: server /data
+    env_file:
+      - ./config/minio.env
+
   # django web server
   web:
     build: "./subsystem2"
@@ -23,6 +33,8 @@ services:
     depends_on:
       - db
       - minio
+    env_file:
+      - ./config/minio.env
 
   # nginx
   nginx:
