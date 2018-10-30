@@ -373,3 +373,8 @@ body.sidebar-toggled footer.sticky-footer {
     width: calc(100% - 90px);
   }
 }
+
+.patients-list {
+  width: 175px;
+  padding: 1rem;
+}

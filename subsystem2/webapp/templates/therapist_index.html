@@ -6,10 +6,12 @@
   <div id="content-wrapper">
     <div class="container-fluid">
       <main>
+
+        {% if selected_patient %}
         <div class="card mb-3">
           <div class="card-header">
             <i class="fas fa-table"></i>
-            Your records
+            Records for {{ selected_patient.name}}
           </div>
           <div class="card-body">
             <div class="table-responsive">
@@ -20,27 +22,29 @@
                     <th>Description</th>
                     <th>Issued by</th>
                     <th>Type</th>
-                    <th>Permission</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {% if records %}
                   {% for r in records %}
                   <tr>
                     <td>{{ r.date }}</td>
                     <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
                     <td>{{ r.therapist.name }}</td>
                     <td>{{ r.type }}</td>
-                    <td><a href="/web/patient/record/{{ r.id }}/permission" target="_blank"><button type="button" class="btn btn-info">Review</button></a></td>
                   </tr>
                   {% endfor %}
+                  {% endif %}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
+        {% else %}
+        Select a Patient to view records.
+        {% endif %}
       </main>
     </div>
   </div>
 </div>
-
 {% endblock %}

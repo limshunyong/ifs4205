@@ -27,8 +27,20 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
-from .forms import UploadDataForm
+from .forms import PermissionForm, UploadDataForm 
 from .object import put_object, get_object
+from django.contrib import messages
+
+
+MAPPING = {
+    '.jpg': IMAGE_DATA,
+    '.png': IMAGE_DATA,
+    '.csv': TIME_SERIES_DATA,
+    '.mp4': MOVIE_DATA,
+    '.mpg': MOVIE_DATA,
+    '.doc': DOCUMENT_DATA,
+    '.txt': DOCUMENT_DATA
+}
 
 
 # user_passes_test helper functions
@@ -37,6 +49,15 @@ def is_therapist(user):
         return user.userprofile.role == UserProfile.ROLE_THERAPIST
     except:
         return False
+
+
+# user_passes_test helper functions
+def is_patient(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_PATIENT
+    except:
+        return False
+
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -87,8 +108,10 @@ def verify_otp(request):
                 print("========static ok")
                 # Verify static token
                 otp.login(request, device)
-                # TODO redirect by account type
-                return redirect(reverse('patient_index'))
+                if request.user.userprofile.role == UserProfile.ROLE_PATIENT:
+                    return redirect(reverse('patient_index'))
+                elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
+                    return redirect(reverse('therapist_index'))
             elif isinstance(device, BLEOTPDevice) and device.verify_token(token):
                 print("========ble ok")
                 otp.login(request, device)
@@ -154,11 +177,17 @@ def keygen_view(request):
 
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_index_view(request, type=None):
+    r  = request.user.userprofile.role
+
     # TODO add pagination
     patient = request.user.userprofile.patient
-    records = HealthData.objects.filter(patient=patient, data_type=type)
-    print(records)
+    if type:
+        records = HealthData.objects.filter(patient=patient, data_type=type)
+    else:
+        records = HealthData.objects.filter(patient=patient)
+
     context = {
         'user': request.user,
         'type': type,
@@ -166,6 +195,50 @@ def patient_index_view(request, type=None):
     }
     return render(request, 'patient_index.html', context)
 
+@otp_required
+@user_passes_test(is_therapist)
+def therapist_index_view(request, patient_id=None):
+    therapist = request.user.userprofile.therapist
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id) if patient_id else None
+    context = {
+        'therapist_patients': therapist_patients,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'therapist_index.html', context)
+
+@otp_required
+@user_passes_test(is_therapist)
+def patient_detail_view(request, patient_id):
+    therapist = request.user.userprofile.therapist
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id)
+    context = {
+        'therapist_patients': therapist_patients,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'patient_detail.html', context)
+
+@otp_required
+@user_passes_test(is_therapist)
+def therapist_list_patient_record_view(request, patient_id=None, type=None):
+    therapist = request.user.userprofile.therapist
+    # Ensure that there is a Therapist <--> Patient relationship
+    get_object_or_404(IsAPatientOf, therapist=therapist, patient_id=patient_id)
+
+    if type:
+        records = HealthData.objects.filter(patient_id=patient_id, data_type=type)
+    else:
+        records = HealthData.objects.filter(patient_id=patient_id)
+
+    therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
+    selected_patient = Patient.objects.get(id=patient_id)
+    context = {
+        'therapist_patients': therapist_patients,
+        'records': records,
+        'selected_patient': selected_patient
+    }
+    return render(request, 'therapist_index.html', context)
 
 @otp_required
 def patient_record_view(request, record_id):
@@ -178,20 +251,27 @@ def patient_record_view(request, record_id):
 
     user = request.user.userprofile
     if user.role == UserProfile.ROLE_PATIENT:
-        print(user.patient)
         health_data = get_object_or_404(HealthData, Q(pk=record_id, patient=user.patient))
     elif user.role == UserProfile.ROLE_THERAPIST:
-        print(user.therapist)
+        therapist = request.user.userprofile.therapist;
         health_data = get_object_or_404(HealthData, pk=record_id)
-        # verify permission
         # TODO refactor below as a function
-        is_a_patient_of = get_object_or_404(IsAPatientOf, patient=health_data.patient, therapist=user.therapist)
-        health_data_permission = HealthDataPermission.objects.get(health_data__id=record_id, therapist=user.therapist)
-        if (health_data_permission and not health_data_permission.read_access) or \
-            (not is_a_patient_of.read_access):
-            messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
-            return render(request, 'therapist_error.html', context)
 
+        # Check if therapist has permissions
+        # 1. Check explicit permissions
+        try:
+            p = HealthDataPermission.objects.get(therapist=therapist, health_data_id=record_id)
+            if p.read_access == False:
+                messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
+                return render(request, 'therapist_error.html', context)
+        except HealthDataPermission.DoesNotExist:
+            # 2. Check default permissions
+            p = get_object_or_404(IsAPatientOf, therapist=therapist, patient=health_data.patient)
+            if p.read_access == False:
+                messages.add_message(request, messages.ERROR, "You do not have the permission to view this record.")
+                return render(request, 'therapist_error.html', context)
+        # for sidebar
+        context['therapist_patients'] = Patient.objects.filter(isapatientof__therapist=therapist)
 
     print(health_data.data_type)
     print(health_data.minio_filename)
@@ -226,113 +306,209 @@ def therapist_upload_data(request):
         return render(request, 'therapist_upload.html', context)
 
     elif request.method == 'POST':
-        form = UploadDataForm(request.POST, therapist_id=therapist.pk)
+        form = UploadDataForm(request.POST, request.FILES, therapist_id=therapist.pk)
+
+        if form.is_valid():
+            file = form.cleaned_data['file']
+            _, file_extension = os.path.splitext(file.name)
+            patient_id = form.cleaned_data['patient'].id
+            minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+            put_object(minio_filename, file.file, file.size)
+
+            patient_data = HealthData(
+                patient=Patient.objects.get(pk=patient_id),
+                therapist=therapist,
+                data_type=form.cleaned_data['data_type'],
+                title=file.name,
+                description='',
+                minio_filename=minio_filename
+                )
+
+            patient_data.save()
+
+            return redirect(reverse(patient_record_view, kwargs={'record_id': patient_data.id}))
+        else:
+            context = {
+                'upload_data_form': form
+            }
+            return render(request, 'therapist_upload.html', context)
+
+
+
+@otp_required
+@user_passes_test(is_patient)
+def patient_upload_data(request):
+    patient = request.user.userprofile.patient
+
+    if request.method == 'GET':
+        context = {
+            'user': request.user
+        }
+        return render(request, 'patient_upload.html', context)
+
+    elif request.method == 'POST' and request.FILES['file']:
 
         # TODO: Implement Form Validation, Clean Up
-        # if form.isValid():
+        #if form.isValid():
+        #	file = form.cleaned_data['file']
 
         file = request.FILES['file']
         _, file_extension = os.path.splitext(file.name)
-        patient_id = request.POST['patient']
+
+
+        if file_extension in MAPPING.keys():
+            data_type = MAPPING[file_extension]
+            
+        else:
+            messages.error(request, 'Invalid file type')
+
+            context = {
+                'user': request.user
+            }
+
+            return render(request, 'patient_upload.html', context)
+
+        patient_id = patient.id
         minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-        put_object(minio_filename, file.file, file.size)
 
-        patient_data = HealthData(
-            patient=Patient.objects.get(pk=patient_id),
-            therapist=therapist,
-            data_type=request.POST['data_type'],
-            title=file.name,
-            description='',
-            minio_filename=minio_filename
+        try:
+            put_object(minio_filename, file.file, file.size)
+            patient_data = HealthData(
+                patient=Patient.objects.get(pk=patient_id),
+                data_type=data_type,
+                title=file.name,
+                description='',
+                minio_filename=minio_filename
             )
+            patient_data.save()
+            messages.success(request, 'File upload successful')
 
-        patient_data.save()
+        except ResponseError as err:
+            print(err)
+            messages.error(request, 'File upload failed')
 
-        return HttpResponse("Posted")
+        context = {
+            'user': request.user,
+        }
+        return render(request, 'patient_upload.html', context)
 
 
 @otp_required
 def patient_permission_view(request):
     patient = request.user.userprofile.patient
+    therapists = list(map(lambda x: {
+        'id': x.therapist.id,
+        'name': x.therapist.name,
+        'designation': x.therapist.designation,
+        'department': x.therapist.department,
+        'contact_number': x.therapist.contact_number,
+        'read_access': 'Read Access' if x.read_access else 'No Access'
+        },IsAPatientOf.objects.filter(patient=patient)))
+
     context = {
-        'therapists': Therapist.objects.filter(isapatientof__patient=patient)
+        'therapists': therapists
     }
     return render(request, 'patient_permission.html', context)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_file_permission_view(request, record_id):
-    print('in')
     patient = request.user.userprofile.patient
+
+    def extract_therapists(t):
+        therapist = Therapist.objects.get(id=t.therapist.id)
+        return {
+            'id': therapist.id,
+            'name': therapist.name,
+            'designation': therapist.designation,
+            'department': therapist.department,
+            'read_access' : 'Read Access' if t.read_access else 'No Access'
+            }
+
+    therapists_priority_high = list(map(extract_therapists, 
+        HealthDataPermission.objects.filter(
+        patient=patient, health_data=record_id)))
+
+    therapists_priority_low = list(map(extract_therapists, 
+        IsAPatientOf.objects.filter(patient=patient)))
+
+    low_priority_ids = [x['id'] for x in therapists_priority_low]
+    high_priority_ids = [x['id'] for x in therapists_priority_high]
+
+    for idx, val in enumerate(low_priority_ids):
+      if val not in high_priority_ids:
+        therapists_priority_high.append(therapists_priority_low[idx])
+
     context = {
-        'therapists': Therapist.objects.filter(healthdatapermission__patient=patient, healthdatapermission__id=record_id),
+        'therapists': therapists_priority_high,
         'record_id': record_id
     }
+
     return render(request, 'patient_file_permission.html', context)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)
-    context = {
-        'file_permission_set' : get_object_or_404(HealthDataPermission, patient=patient, therapist=therapist, id=record_id),
-        'record_id' : record_id
-    }
-    return render(request, 'patient_file_permission_detail.html', context)
+
+    if request.method == 'GET':
+        try:
+            current_permission = HealthDataPermission.objects.get(patient=patient, therapist=therapist, health_data=record_id).read_access
+        except:
+            current_permission = IsAPatientOf.objects.get(patient=patient, therapist=therapist).read_access
+
+        context = {
+            'therapist' : therapist,
+            'record_id' : record_id,
+            'permission_form': PermissionForm(initial={'permission': current_permission})
+        }
+        return render(request, 'patient_file_permission_detail.html', context)
+
+    elif request.method == 'POST':
+        form = PermissionForm(request.POST)
+        if form.is_valid():
+            print('valid form')
+            permission = form.cleaned_data['permission']
+            print('permission: %s' % permission)
+            # Upsert HealthDataPermission
+            try:
+                print('record_id: %s' % record_id)
+                p = HealthDataPermission.objects.get(patient=patient, therapist=therapist, health_data_id=record_id)
+                p.read_access = permission
+                p.save()
+            except HealthDataPermission.DoesNotExist:
+                p = HealthDataPermission(patient=patient, therapist=therapist, health_data_id=record_id, read_access=permission)
+                p.save()
+            return redirect('/web/patient/record/%s/permission/' % record_id)
 
 @otp_required
+@user_passes_test(is_patient)
 def patient_permission_detail_view(request, therapist_id=None):
     patient = request.user.userprofile.patient
     therapist = Therapist.objects.get(id=therapist_id)
-    context = {
-        'permission_set': get_object_or_404(IsAPatientOf, patient=patient, therapist=therapist)
-    }
-    return render(request, 'patient_permission_detail.html', context)
 
+    if request.method == 'GET':
+        current_permission = get_object_or_404(IsAPatientOf, patient=patient, therapist=therapist).read_access
+        explicit_permissions = list(map(lambda x: {
+            'title': x.health_data.title,
+            'read_access': 'Read Access' if x.read_access else 'No Access',
+            'id': x.health_data.id
+            }, HealthDataPermission.objects.filter(patient=patient, therapist=therapist)))
 
-@otp_required
-def patient_update_permission(request, therapist_id=None, data_type=None, choice=None):
-    if (therapist_id is None) or (data_type is None) or (choice is None):
-        raise Http404
-    
-    therapist = Therapist.objects.get(id=therapist_id)
-    is_a_patient_of = IsAPatientOf.objects.get(therapist=therapist)
+        context = {
+            'therapist': therapist,
+            'permission_form': PermissionForm(initial={'permission': current_permission}),
+            'explicit_permissions': explicit_permissions
+        }
+        return render(request, 'patient_permission_detail.html', context)
 
-    # TODO use url path
-    data_type = int(data_type)
-    # TODO change numbers to DATA_TYPE
-    print('data_type', data_type)
-    if data_type == 0:
-        is_a_patient_of.image_access = choice
-    elif data_type == 1:
-        is_a_patient_of.timeseries_access = choice
-    elif data_type == 2:
-        is_a_patient_of.movie_access = choice
-    elif data_type == 3:
-        is_a_patient_of.document_access = choice
-    is_a_patient_of.save()
-    return redirect('/web/patient/permission/'+str(therapist.id))
-
-
-@otp_required
-def patient_update_file_permission(request, record_id, therapist_id=None, data_type=None, choice=None):
-    if (therapist_id is None) or (data_type is None) or (choice is None):
-        raise Http404
-
-    therapist = Therapist.objects.get(id=therapist_id)
-    healthdatapermisison = HealthDataPermission.objects.get(therapist=therapist, id=record_id)
-
-    # TODO use url path
-    data_type = int(data_type)
-    # TODO change numbers to DATA_TYPE
-    print('data_type', data_type)
-    if data_type == 0:
-        healthdatapermisison.permission = choice
-    elif data_type == 1:
-        healthdatapermisison.permission = choice
-    elif data_type == 2:
-        healthdatapermisison.permission = choice
-    elif data_type == 3:
-        healthdatapermisison.permission = choice
-    healthdatapermisison.save()
-
-    return redirect('/web/patient/record/'+ str(record_id)+'/permission/'+ str(therapist.id) +'/')
+    elif request.method == 'POST':
+        form = PermissionForm(request.POST)
+        if form.is_valid():
+            permission = form.cleaned_data['permission']
+            # Update Permission
+            p = get_object_or_404(IsAPatientOf, patient=patient, therapist=therapist)
+            p.read_access = permission
+            p.save()
+            return redirect('/web/patient/permission/')
