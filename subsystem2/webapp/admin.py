@@ -8,11 +8,12 @@ class UserProfileForm(ModelForm):
 	"""Add labels for form fields on AdminUserInline"""
 	class Meta:
 		model = UserProfile
-		fields = ['role', 'patient', 'therapist']
+		fields = ['role', 'patient', 'therapist', 'researcher']
 		labels = {
 			'role': 'Role',
 			'patient': 'Patient Profile',
-			'therapist': 'Therapist Profile'
+			'therapist': 'Therapist Profile',
+                        'researcher': 'Researcher Profile',
 		}
 
 
@@ -30,7 +31,7 @@ class AdminUserModel(UserAdmin):
 	list_display = ('username', 'email', 'get_role','is_staff',)
 	# declare extended user model
 	list_select_related = ('userprofile', )
-	
+
 	def get_role(self, instance):
 		return instance.userprofile.role
 	get_role.short_description = 'Role'
