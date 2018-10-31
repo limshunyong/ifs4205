@@ -295,7 +295,7 @@ def patient_record_view(request, record_id):
 
 
 def resolve_minio_link(link):
-    return link.replace("http://minio:9000/", "http://127.0.0.1/")
+    return link.replace("http://minio:9000/", "http://127.0.0.1:8080/")
     
 
 @otp_required
