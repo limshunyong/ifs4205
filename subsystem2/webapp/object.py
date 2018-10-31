@@ -16,7 +16,7 @@ minioClient = Minio(MINIO_CONNECTION_STR,
                     secure=False)
 
 BUCKET_NAME = 'patientdata'
-if BUCKET_NAME not in minioClient.list_buckets():
+if BUCKET_NAME not in [i.name for i in minioClient.list_buckets()]:
     minioClient.make_bucket(BUCKET_NAME)
 
 def put_object(object_name, data, length):
