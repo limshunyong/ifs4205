@@ -277,15 +277,14 @@ def patient_record_view(request, record_id):
 
     print(health_data.data_type)
     print(health_data.minio_filename)
-
     obj_link = get_object(health_data.minio_filename)
     print(obj_link)
 
     if health_data.data_type == IMAGE_DATA:
-        context['obj_link'] = obj_link
+        context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_image.html', context)
     elif health_data.data_type == MOVIE_DATA:
-        context['obj_link'] = obj_link
+        context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_movie.html', context)
     elif health_data.data_type == TIME_SERIES_DATA:
         return HttpResponse('To implement.')
@@ -294,6 +293,10 @@ def patient_record_view(request, record_id):
     else:
         return HttpResponseForbidden()
 
+
+def resolve_minio_link(link):
+    return link.replace("http://minio:9000/", "http://127.0.0.1/")
+    
 
 @otp_required
 @user_passes_test(is_therapist)

@@ -17,7 +17,7 @@ services:
     image: minio/minio:latest
     container_name: minio
     ports:
-      - "10000:9000"
+      - "9000:9000"
     command: server /data
     env_file:
       - ./config/minio.env
@@ -27,9 +27,9 @@ services:
     build: "./subsystem2"
     container_name: subsystem2
     command: bash -c "./wait-for-it.sh -t 0 db:3306 --
-      python manage.py makemigrations --merge --noinput && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:9000"
+      python manage.py makemigrations --merge --noinput && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     ports:
-      - "9000:9000"
+      - "8000:8000"
     depends_on:
       - db
       - minio
