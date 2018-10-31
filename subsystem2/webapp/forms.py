@@ -2,6 +2,7 @@ from django import forms
 from .models import IsAPatientOf, Patient, DATA_TYPES
 from django.db.models import Count, Sum, Q
 
+
 class UploadDataForm(forms.Form):
     def __init__(self,*args,**kwargs):
         therapist_id = kwargs.pop('therapist_id')
@@ -16,6 +17,15 @@ class UploadDataForm(forms.Form):
     patient.widget.attrs = {'class':'form-control'}
     data_type.widget.attrs = {'class':'form-control'}
     file.widget.attrs = {'class':'form-control'}
+
+
+class UploadPatientDataForm(forms.Form):
+    data_type = forms.ChoiceField(choices=DATA_TYPES)
+    file = forms.FileField()
+
+    data_type.widget.attrs = {'class':'form-control'}
+    file.widget.attrs = {'class':'form-control'}
+
 
 class PermissionForm(forms.Form):
     TRUE_FALSE_CHOICES = (

@@ -7,6 +7,7 @@ import os.path
 from datetime import datetime
 import pytz
 import ed25519
+import magic
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -29,19 +30,20 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
-from .forms import PermissionForm, UploadDataForm
+from .forms import PermissionForm, UploadDataForm, UploadPatientDataForm
 from .object import put_object, get_object
 from django.contrib import messages
+from minio.error import ResponseError
 
 
 MAPPING = {
-    '.jpg': IMAGE_DATA,
-    '.png': IMAGE_DATA,
-    '.csv': TIME_SERIES_DATA,
-    '.mp4': MOVIE_DATA,
-    '.mpg': MOVIE_DATA,
-    '.doc': DOCUMENT_DATA,
-    '.txt': DOCUMENT_DATA
+    'image/jpg': IMAGE_DATA,
+    'image/jpeg': IMAGE_DATA,
+    'image/png': IMAGE_DATA,
+    'video/mp4': MOVIE_DATA,
+    'video/mpg': MOVIE_DATA,
+    'application/msword': DOCUMENT_DATA,
+    'text/plain': DOCUMENT_DATA
 }
 
 
@@ -316,6 +318,33 @@ def therapist_upload_data(request):
         if form.is_valid():
             file = form.cleaned_data['file']
             _, file_extension = os.path.splitext(file.name)
+            data_type = form.cleaned_data['data_type']
+
+            mime = magic.from_buffer(file.read(), mime=True)
+            file.seek(0)
+            if mime in MAPPING.keys():
+                real_data_type = MAPPING[mime]
+
+            else:
+                messages.error(request, 'Invalid file type')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+
+                return render(request, 'therapist_upload.html', context)
+
+            if int(data_type) != int(real_data_type):
+                messages.error(request, 'Invalid file')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+
+                return render(request, 'therapist_upload.html', context)
+
             patient_id = form.cleaned_data['patient'].id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
             try:
@@ -331,7 +360,7 @@ def therapist_upload_data(request):
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 therapist=therapist,
-                data_type=form.cleaned_data['data_type'],
+                data_type=data_type,
                 title=file.name,
                 description='',
                 minio_filename=minio_filename
@@ -355,61 +384,72 @@ def patient_upload_data(request):
 
     if request.method == 'GET':
         context = {
-            'user': request.user
+            'user': request.user,
+            'upload_data_form': UploadPatientDataForm()
         }
         return render(request, 'patient_upload.html', context)
 
-    elif request.method == 'POST' and request.FILES['file']:
+    elif request.method == 'POST':
+        form = UploadPatientDataForm(request.POST, request.FILES)
 
-        # TODO: Implement Form Validation, Clean Up
-        #if form.isValid():
-        #	file = form.cleaned_data['file']
+        if form.is_valid():
+            file = form.cleaned_data['file']
+            _, file_extension = os.path.splitext(file.name)
+            data_type=form.cleaned_data['data_type']
 
-        file = request.FILES['file']
-        _, file_extension = os.path.splitext(file.name)
+            mime = magic.from_buffer(file.read(), mime=True)
+            file.seek(0)
+            if mime in MAPPING.keys():
+                real_data_type = MAPPING[mime]
 
+            else:
+                messages.error(request, 'Invalid file type')
 
-        if file_extension in MAPPING.keys():
-            data_type = MAPPING[file_extension]
+                context = {
+                    'user': request.user,
+                    'upload_data_form': UploadPatientDataForm()
+                }
 
-        else:
-            messages.error(request, 'Invalid file type')
+                return render(request, 'patient_upload.html', context)
+
+            if int(data_type) != int(real_data_type):
+                messages.error(request, 'Invalid file')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': UploadPatientDataForm()
+                }
+
+                return render(request, 'patient_upload.html', context)
+
+            patient_id = patient.id
+            minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+
+            try:
+                put_object(minio_filename, file.file, file.size)
+                patient_data = HealthData(
+                   patient=Patient.objects.get(pk=patient_id),
+                    data_type=data_type,
+                    title=file.name,
+                    description='',
+                   minio_filename=minio_filename
+                )
+                patient_data.save()
+                messages.success(request, 'File upload successful')
+            except ResponseError as err:
+                print(err)
+                messages.error(request, 'ResponseError: file upload failed')
+                return render(request, 'patient_upload.html')
+            except MaxRetryError as err:
+                print(err)
+                messages.error(request, 'MaxRetryError: file upload failed')
+                return render(request, 'patient_upload.html')
 
             context = {
-                'user': request.user
+                'user': request.user,
+                'upload_data_form': UploadPatientDataForm()
             }
-
             return render(request, 'patient_upload.html', context)
-
-        patient_id = patient.id
-        minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-
-        try:
-            put_object(minio_filename, file.file, file.size)
-            patient_data = HealthData(
-                patient=Patient.objects.get(pk=patient_id),
-                data_type=data_type,
-                title=file.name,
-                description='',
-                minio_filename=minio_filename
-            )
-            patient_data.save()
-            messages.success(request, 'File upload successful')
-        except ResponseError as err:
-            print(err)
-            messages.error(request, 'ResponseError: file upload failed')
-            return render(request, 'patient_upload.html')
-        except MaxRetryError as err:
-            print(err)
-            messages.error(request, 'MaxRetryError: file upload failed')
-            return render(request, 'patient_upload.html')
-
-
-
-        context = {
-            'user': request.user,
-        }
-        return render(request, 'patient_upload.html', context)
 
 
 @otp_required
