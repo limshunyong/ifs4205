@@ -16,6 +16,8 @@ minioClient = Minio(MINIO_CONNECTION_STR,
                     secure=False)
 
 BUCKET_NAME = 'patientdata'
+if BUCKET_NAME not in minioClient.list_buckets():
+    minioClient.make_bucket(BUCKET_NAME)
 
 def put_object(object_name, data, length):
     etag = minioClient.put_object(BUCKET_NAME, object_name, data, length)
