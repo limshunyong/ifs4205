@@ -7,6 +7,7 @@ import os.path
 from datetime import datetime
 import pytz
 import ed25519
+from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
 from django.utils import timezone
@@ -24,10 +25,11 @@ from django.contrib import messages
 import django_otp as otp
 from django_otp.decorators import otp_required
 from django_otp.plugins.otp_static.models import StaticDevice
+
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
-from .forms import PermissionForm, UploadDataForm 
+from .forms import PermissionForm, UploadDataForm
 from .object import put_object, get_object
 from django.contrib import messages
 
@@ -155,7 +157,7 @@ def challenge_view(request):
         'error_msg': error_msg,
         'challenge': msg_to_be_signed,
         'device_id': request.POST['device_id']
-    } 
+    }
     return render(request, 'challenge.html', context)
 
 
@@ -275,15 +277,14 @@ def patient_record_view(request, record_id):
 
     print(health_data.data_type)
     print(health_data.minio_filename)
-
     obj_link = get_object(health_data.minio_filename)
     print(obj_link)
 
     if health_data.data_type == IMAGE_DATA:
-        context['obj_link'] = obj_link
+        context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_image.html', context)
     elif health_data.data_type == MOVIE_DATA:
-        context['obj_link'] = obj_link
+        context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_movie.html', context)
     elif health_data.data_type == TIME_SERIES_DATA:
         return HttpResponse('To implement.')
@@ -292,6 +293,10 @@ def patient_record_view(request, record_id):
     else:
         return HttpResponseForbidden()
 
+
+def resolve_minio_link(link):
+    return link.replace("http://minio:9000/", "http://127.0.0.1/")
+    
 
 @otp_required
 @user_passes_test(is_therapist)
@@ -313,8 +318,16 @@ def therapist_upload_data(request):
             _, file_extension = os.path.splitext(file.name)
             patient_id = form.cleaned_data['patient'].id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-            put_object(minio_filename, file.file, file.size)
-
+            try:
+                put_object(minio_filename, file.file, file.size)
+            except ResponseError as err:
+                print(err)
+                messages.error(request, 'ResponseError: file upload failed')
+                return render(request, 'therapist_upload.html')
+            except MaxRetryError as err:
+                print(err)
+                messages.error(request, 'MaxRetryError: file upload failed')
+                return render(request, 'therapist_upload.html')
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 therapist=therapist,
@@ -358,7 +371,7 @@ def patient_upload_data(request):
 
         if file_extension in MAPPING.keys():
             data_type = MAPPING[file_extension]
-            
+
         else:
             messages.error(request, 'Invalid file type')
 
@@ -382,10 +395,16 @@ def patient_upload_data(request):
             )
             patient_data.save()
             messages.success(request, 'File upload successful')
-
         except ResponseError as err:
             print(err)
-            messages.error(request, 'File upload failed')
+            messages.error(request, 'ResponseError: file upload failed')
+            return render(request, 'patient_upload.html')
+        except MaxRetryError as err:
+            print(err)
+            messages.error(request, 'MaxRetryError: file upload failed')
+            return render(request, 'patient_upload.html')
+
+
 
         context = {
             'user': request.user,
@@ -425,11 +444,11 @@ def patient_file_permission_view(request, record_id):
             'read_access' : 'Read Access' if t.read_access else 'No Access'
             }
 
-    therapists_priority_high = list(map(extract_therapists, 
+    therapists_priority_high = list(map(extract_therapists,
         HealthDataPermission.objects.filter(
         patient=patient, health_data=record_id)))
 
-    therapists_priority_low = list(map(extract_therapists, 
+    therapists_priority_low = list(map(extract_therapists,
         IsAPatientOf.objects.filter(patient=patient)))
 
     low_priority_ids = [x['id'] for x in therapists_priority_low]

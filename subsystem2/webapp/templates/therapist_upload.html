@@ -8,6 +8,13 @@
 		Therapist Upload Data Portal
 	</div>
 	<div class="card-body">
+		{% if messages %}
+		<ul class="messages">
+			{% for message in messages %}
+				<li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+			{% endfor %}
+		</ul>
+		{% endif %}
 		<form action="/web/therapist/upload" method="post" id="upload-form" enctype="multipart/form-data">
 			<div class="form-group">
 				{{ upload_data_form }}
