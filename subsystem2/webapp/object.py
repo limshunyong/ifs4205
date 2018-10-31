@@ -16,8 +16,11 @@ minioClient = Minio(MINIO_CONNECTION_STR,
                     secure=False)
 
 BUCKET_NAME = 'patientdata'
-if BUCKET_NAME not in [i.name for i in minioClient.list_buckets()]:
-    minioClient.make_bucket(BUCKET_NAME)
+try:
+    if BUCKET_NAME not in [i.name for i in minioClient.list_buckets()]:
+        minioClient.make_bucket(BUCKET_NAME)
+except Exception as e:
+    print('WARNING: Failed to list/create minio buckets becase of the following exception: \n %s' % str(e))
 
 def put_object(object_name, data, length):
     etag = minioClient.put_object(BUCKET_NAME, object_name, data, length)
