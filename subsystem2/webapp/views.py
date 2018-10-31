@@ -7,6 +7,7 @@ import os.path
 from datetime import datetime
 import pytz
 import ed25519
+from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
 from django.utils import timezone
@@ -24,6 +25,7 @@ from django.contrib import messages
 import django_otp as otp
 from django_otp.decorators import otp_required
 from django_otp.plugins.otp_static.models import StaticDevice
+
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
@@ -313,8 +315,16 @@ def therapist_upload_data(request):
             _, file_extension = os.path.splitext(file.name)
             patient_id = form.cleaned_data['patient'].id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-            put_object(minio_filename, file.file, file.size)
-
+            try:
+                put_object(minio_filename, file.file, file.size)
+            except ResponseError as err:
+                print(err)
+                messages.error(request, 'ResponseError: file upload failed')
+                return render(request, 'therapist_upload.html')
+            except MaxRetryError as err:
+                print(err)
+                messages.error(request, 'MaxRetryError: file upload failed')
+                return render(request, 'therapist_upload.html')
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 therapist=therapist,
@@ -382,10 +392,16 @@ def patient_upload_data(request):
             )
             patient_data.save()
             messages.success(request, 'File upload successful')
-
         except ResponseError as err:
             print(err)
-            messages.error(request, 'File upload failed')
+            messages.error(request, 'ResponseError: file upload failed')
+            return render(request, 'patient_upload.html')
+        except MaxRetryError as err:
+            print(err)
+            messages.error(request, 'MaxRetryError: file upload failed')
+            return render(request, 'patient_upload.html')
+
+
 
         context = {
             'user': request.user,
