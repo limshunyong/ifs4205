@@ -6,10 +6,13 @@ import os
 
 ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", default='')
 SECRET_KEY = os.getenv("MINIO_SECRET_KEY", default='')
+MINIO_HOST = os.getenv("MINIO_HOST", default='localhost')
+MINIO_PORT = os.getenv("MINIO_PORT", 9000)
+MINIO_CONNECTION_STR = "{}:{}".format(MINIO_HOST, MINIO_PORT)
 
-minioClient = Minio('localhost:9000',
+minioClient = Minio(MINIO_CONNECTION_STR,
                     access_key=ACCESS_KEY,
-                    secret_key=ACCESS_KEY,
+                    secret_key=SECRET_KEY,
                     secure=False)
 
 BUCKET_NAME = 'patientdata'

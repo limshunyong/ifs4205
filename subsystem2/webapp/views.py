@@ -27,7 +27,7 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
 MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
-from .forms import PermissionForm, UploadDataForm 
+from .forms import PermissionForm, UploadDataForm
 from .object import put_object, get_object
 from django.contrib import messages
 
@@ -155,7 +155,7 @@ def challenge_view(request):
         'error_msg': error_msg,
         'challenge': msg_to_be_signed,
         'device_id': request.POST['device_id']
-    } 
+    }
     return render(request, 'challenge.html', context)
 
 
@@ -358,7 +358,7 @@ def patient_upload_data(request):
 
         if file_extension in MAPPING.keys():
             data_type = MAPPING[file_extension]
-            
+
         else:
             messages.error(request, 'Invalid file type')
 
@@ -425,11 +425,11 @@ def patient_file_permission_view(request, record_id):
             'read_access' : 'Read Access' if t.read_access else 'No Access'
             }
 
-    therapists_priority_high = list(map(extract_therapists, 
+    therapists_priority_high = list(map(extract_therapists,
         HealthDataPermission.objects.filter(
         patient=patient, health_data=record_id)))
 
-    therapists_priority_low = list(map(extract_therapists, 
+    therapists_priority_low = list(map(extract_therapists,
         IsAPatientOf.objects.filter(patient=patient)))
 
     low_priority_ids = [x['id'] for x in therapists_priority_low]
