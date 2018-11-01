@@ -1,6 +1,7 @@
 from django import forms
 from .models import IsAPatientOf, Patient, DATA_TYPES
 from django.db.models import Count, Sum, Q
+from ckeditor.widgets import CKEditorWidget
 from django.core.exceptions import ValidationError
 
 
@@ -22,6 +23,7 @@ class UploadDataForm(forms.Form):
 
     patient = forms.ModelChoiceField(queryset=None)
     data_type = forms.ChoiceField(choices=DATA_TYPES)
+    description = forms.CharField(widget=CKEditorWidget())
     file = forms.FileField(validators=[validate_file_size])
 
     patient.widget.attrs = {'class':'form-control'}
