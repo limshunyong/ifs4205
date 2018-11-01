@@ -5,3 +5,4 @@ django_otp
 ed25519==1.4
 python-magic
 django-auditlog
+django-ckeditor
