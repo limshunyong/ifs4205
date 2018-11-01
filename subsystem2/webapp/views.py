@@ -426,7 +426,7 @@ def patient_upload_data(request):
 
                 context = {
                     'user': request.user,
-                    'upload_data_form': uploadPatientDataForm()
+                    'upload_data_form': UploadPatientDataForm()
                 }
 
                 return render(request, 'patient_upload.html', context)
