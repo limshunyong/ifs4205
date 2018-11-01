@@ -659,8 +659,10 @@ def get_patient_data(request):
 
                     obj_link = get_object(minio_filename, 86400)
 
-                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
+                    link = resolve_minio_link(obj_link)
 
+
+                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id, link])
                 return response
 
             else:
@@ -706,8 +708,10 @@ def get_patient_data(request):
 
                             obj_link = get_object(minio_filename, 86400)
 
+                            link = resolve_minio_link(obj_link)
+
                             writer.writerow(
-                                [data_id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
+                                [data_id, title, description, date, patient_id, datatype, minio_filename, therapist_id, link])
 
                     except Exception as e:
 
