@@ -26,16 +26,30 @@ from django.contrib import messages
 import django_otp as otp
 from django_otp.decorators import otp_required
 from django_otp.plugins.otp_static.models import StaticDevice
+from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
-from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
-HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
-MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
+
+from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, \
+    HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA, \
+    MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm, UploadPatientDataForm
 from .object import put_object, get_object
 from django.contrib import messages
 from minio.error import ResponseError
 
+
+TOKEN = os.environ.get('SEC_TOKEN')
+
+MAPPING = {
+    'image/jpg': IMAGE_DATA,
+    'image/jpeg': IMAGE_DATA,
+    'image/png': IMAGE_DATA,
+    'video/mp4': MOVIE_DATA,
+    'video/mpg': MOVIE_DATA,
+    'application/msword': DOCUMENT_DATA,
+    'text/plain': DOCUMENT_DATA
+  
 FILE_TYPES = {
     "Image": [
         { "mime": "image/jpeg", "ext": ".jpg" },
@@ -72,7 +86,7 @@ def is_patient(user):
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
-    print(request.user, request.user.is_authenticated ,request.user.is_verified())
+    print(request.user, request.user.is_authenticated, request.user.is_verified())
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
@@ -95,7 +109,7 @@ def login_view(request, next=None):
 
 def otp_view(request, next=None):
     next_url = request.GET.get('next')
-    print(request.user, request.user.is_authenticated ,request.user.is_verified())
+    print(request.user, request.user.is_authenticated, request.user.is_verified())
     if not request.user.is_authenticated:
         return redirect(reverse('login'))
 
@@ -156,7 +170,7 @@ def challenge_view(request):
     print('verifying_key', device.key)
     print('signing_key', signing_key_str)
     verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
-    signing_key =  ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
+    signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
     sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
     print('challenge', msg_to_be_signed)
     print('signature', sig)
@@ -190,7 +204,7 @@ def keygen_view(request):
 @otp_required
 @user_passes_test(is_patient)
 def patient_index_view(request, type=None):
-    r  = request.user.userprofile.role
+    r = request.user.userprofile.role
 
     # TODO add pagination
     patient = request.user.userprofile.patient
@@ -206,29 +220,34 @@ def patient_index_view(request, type=None):
     }
     return render(request, 'patient_index.html', context)
 
+
 @otp_required
 @user_passes_test(is_therapist)
 def therapist_index_view(request, patient_id=None):
     therapist = request.user.userprofile.therapist
     therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
-    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id) if patient_id else None
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist,
+                                         isapatientof__patient_id=patient_id) if patient_id else None
     context = {
         'therapist_patients': therapist_patients,
         'selected_patient': selected_patient
     }
     return render(request, 'therapist_index.html', context)
 
+
 @otp_required
 @user_passes_test(is_therapist)
 def patient_detail_view(request, patient_id):
     therapist = request.user.userprofile.therapist
     therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
-    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist, isapatientof__patient_id=patient_id)
+    selected_patient = get_object_or_404(Patient, isapatientof__therapist=therapist,
+                                         isapatientof__patient_id=patient_id)
     context = {
         'therapist_patients': therapist_patients,
         'selected_patient': selected_patient
     }
     return render(request, 'patient_detail.html', context)
+
 
 @otp_required
 @user_passes_test(is_therapist)
@@ -251,13 +270,14 @@ def therapist_list_patient_record_view(request, patient_id=None, type=None):
     }
     return render(request, 'therapist_index.html', context)
 
+
 @otp_required
 def patient_record_view(request, record_id):
     print(record_id)
 
     context = {
         'user': request.user,
-        'record_id':  record_id
+        'record_id': record_id
     }
 
     user = request.user.userprofile
@@ -286,7 +306,7 @@ def patient_record_view(request, record_id):
 
     print(health_data.data_type)
     print(health_data.minio_filename)
-    obj_link = get_object(health_data.minio_filename)
+    obj_link = get_object(health_data.minio_filename, 10)
     print(obj_link)
 
     if health_data.data_type == IMAGE_DATA:
@@ -374,7 +394,7 @@ def therapist_upload_data(request):
                 title=file.name,
                 description='',
                 minio_filename=minio_filename
-                )
+            )
 
             patient_data.save()
 
@@ -384,7 +404,6 @@ def therapist_upload_data(request):
                 'upload_data_form': form
             }
             return render(request, 'therapist_upload.html', context)
-
 
 
 @otp_required
@@ -439,11 +458,11 @@ def patient_upload_data(request):
             try:
                 put_object(minio_filename, file.file, file.size)
                 patient_data = HealthData(
-                   patient=Patient.objects.get(pk=patient_id),
+                    patient=Patient.objects.get(pk=patient_id),
                     data_type=data_type,
                     title=file.name,
                     description='',
-                   minio_filename=minio_filename
+                    minio_filename=minio_filename
                 )
                 patient_data.save()
                 messages.success(request, 'File upload successful')
@@ -473,12 +492,13 @@ def patient_permission_view(request):
         'department': x.therapist.department,
         'contact_number': x.therapist.contact_number,
         'read_access': 'Read Access' if x.read_access else 'No Access'
-        },IsAPatientOf.objects.filter(patient=patient)))
+    }, IsAPatientOf.objects.filter(patient=patient)))
 
     context = {
         'therapists': therapists
     }
     return render(request, 'patient_permission.html', context)
+
 
 @otp_required
 @user_passes_test(is_patient)
@@ -492,22 +512,22 @@ def patient_file_permission_view(request, record_id):
             'name': therapist.name,
             'designation': therapist.designation,
             'department': therapist.department,
-            'read_access' : 'Read Access' if t.read_access else 'No Access'
-            }
+            'read_access': 'Read Access' if t.read_access else 'No Access'
+        }
 
     therapists_priority_high = list(map(extract_therapists,
-        HealthDataPermission.objects.filter(
-        patient=patient, health_data=record_id)))
+                                        HealthDataPermission.objects.filter(
+                                            patient=patient, health_data=record_id)))
 
     therapists_priority_low = list(map(extract_therapists,
-        IsAPatientOf.objects.filter(patient=patient)))
+                                       IsAPatientOf.objects.filter(patient=patient)))
 
     low_priority_ids = [x['id'] for x in therapists_priority_low]
     high_priority_ids = [x['id'] for x in therapists_priority_high]
 
     for idx, val in enumerate(low_priority_ids):
-      if val not in high_priority_ids:
-        therapists_priority_high.append(therapists_priority_low[idx])
+        if val not in high_priority_ids:
+            therapists_priority_high.append(therapists_priority_low[idx])
 
     context = {
         'therapists': therapists_priority_high,
@@ -515,6 +535,7 @@ def patient_file_permission_view(request, record_id):
     }
 
     return render(request, 'patient_file_permission.html', context)
+
 
 @otp_required
 @user_passes_test(is_patient)
@@ -524,13 +545,14 @@ def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
 
     if request.method == 'GET':
         try:
-            current_permission = HealthDataPermission.objects.get(patient=patient, therapist=therapist, health_data=record_id).read_access
+            current_permission = HealthDataPermission.objects.get(patient=patient, therapist=therapist,
+                                                                  health_data=record_id).read_access
         except:
             current_permission = IsAPatientOf.objects.get(patient=patient, therapist=therapist).read_access
 
         context = {
-            'therapist' : therapist,
-            'record_id' : record_id,
+            'therapist': therapist,
+            'record_id': record_id,
             'permission_form': PermissionForm(initial={'permission': current_permission})
         }
         return render(request, 'patient_file_permission_detail.html', context)
@@ -548,9 +570,11 @@ def patient_file_permisison_detail_view(request, record_id, therapist_id=None):
                 p.read_access = permission
                 p.save()
             except HealthDataPermission.DoesNotExist:
-                p = HealthDataPermission(patient=patient, therapist=therapist, health_data_id=record_id, read_access=permission)
+                p = HealthDataPermission(patient=patient, therapist=therapist, health_data_id=record_id,
+                                         read_access=permission)
                 p.save()
             return redirect('/web/patient/record/%s/permission/' % record_id)
+
 
 @otp_required
 @user_passes_test(is_patient)
@@ -564,7 +588,7 @@ def patient_permission_detail_view(request, therapist_id=None):
             'title': x.health_data.title,
             'read_access': 'Read Access' if x.read_access else 'No Access',
             'id': x.health_data.id
-            }, HealthDataPermission.objects.filter(patient=patient, therapist=therapist)))
+        }, HealthDataPermission.objects.filter(patient=patient, therapist=therapist)))
 
         context = {
             'therapist': therapist,
@@ -582,3 +606,113 @@ def patient_permission_detail_view(request, therapist_id=None):
             p.read_access = permission
             p.save()
             return redirect('/web/patient/permission/')
+
+
+@csrf_exempt
+def get_patient_data(request):
+    if request.method == 'POST':
+        # compare the token
+        if request.POST['stoken'] == TOKEN:
+            nric = request.POST['nric']
+
+            # Create the HttpResponse object with the appropriate CSV header.
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="patientData.csv"'
+            writer = csv.writer(response)
+
+            # request for all content
+
+            if nric == 'all':
+
+                writer.writerow(["id", "name", "nric", "sex", "address", "contact_number", "date_of_birth"])
+
+                patients = Patient.objects.all()
+
+                for p in patients:
+                    id = p.id
+                    pname = p.name
+                    pnric = p.nric
+                    sex = p.sex
+                    address = p.address
+                    contact_number = p.contact_number
+                    date_of_birth = p.date_of_birth
+                    writer.writerow([id, pname, pnric, sex, address, contact_number, date_of_birth])
+
+                writer.writerow(["=" * 80])
+
+                writer.writerow(
+                    ["data_id", "title", "description", "date", "patient_id", "data_type", "minio_filename", "therapist_id", "minio link"])
+
+                data = HealthData.objects.all()
+
+                for d in data:
+                    id = d.id
+                    title = d.title
+                    description = d.description
+                    date = d.date
+                    patient_id = d.patient_id
+                    datatype = d.data_type
+                    minio_filename = d.minio_filename
+                    therapist_id = d.therapist_id
+
+                    obj_link = get_object(minio_filename, 86400)
+
+                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
+
+                return response
+
+            else:
+
+                writer.writerow(["id", "name", "nric", "sex", "address", "contact_number", "date_of_birth"])
+
+                nricarray = nric.split(",")
+
+                for each in nricarray:
+                    try:
+                        p = Patient.objects.get(nric=each)
+                        id = p.id
+                        pname = p.name
+                        pnric = p.nric
+                        sex = p.sex
+                        address = p.address
+                        contact_number = p.contact_number
+                        date_of_birth = p.date_of_birth
+
+                        writer.writerow([id, pname, pnric, sex, address, contact_number, date_of_birth])
+
+                    except Exception as e:
+                        print("Patient with nric ", each, " does not exist")
+
+                writer.writerow(["=" * 80])
+
+                writer.writerow(["data_id", "title", "description", "date", "patient_id", "data_type", "minio_filename", "therapist_id", "minio_link"])
+
+                for each in nricarray:
+                    try:
+                        # get patient id
+                        patient_id = Patient.objects.get(nric=each).id
+                        data = HealthData.objects.filter(patient_id=patient_id)
+                        for i in data:
+                            data_id = i.id
+                            title = i.title
+                            description = i.description
+                            date = i.date
+                            patient_id = i.patient_id
+                            datatype = i.data_type
+                            minio_filename = i.minio_filename
+                            therapist_id = i.therapist_id
+
+                            obj_link = get_object(minio_filename, 86400)
+
+                            writer.writerow(
+                                [data_id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
+
+                    except Exception as e:
+
+                        print("patient with ", each, "does not exist")
+
+                return response
+        else:
+            return HttpResponseForbidden("Invalid Token")
+    else:
+        return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
