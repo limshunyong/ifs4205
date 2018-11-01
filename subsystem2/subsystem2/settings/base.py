@@ -129,4 +129,4 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 LOGIN_URL = '/web/account/login/'
-OTP_LOGIN_URL = '/web/account/verify/'
+OTP_LOGIN_URL = '/web/account/login/'

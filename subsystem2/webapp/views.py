@@ -310,6 +310,7 @@ def patient_record_view(request, record_id):
     obj_link = get_object(health_data.minio_filename, 10)
     print(obj_link)
 
+    context['description'] = health_data.description
     if health_data.data_type == IMAGE_DATA:
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_image.html', context)
@@ -393,7 +394,7 @@ def therapist_upload_data(request):
                 therapist=therapist,
                 data_type=data_type,
                 title=file.name,
-                description='',
+                description=form.cleaned_data['description'],
                 minio_filename=minio_filename
             )
 

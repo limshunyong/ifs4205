@@ -1,6 +1,7 @@
 from django import forms
 from .models import IsAPatientOf, Patient, DATA_TYPES
 from django.db.models import Count, Sum, Q
+from ckeditor.widgets import CKEditorWidget
 
 
 class UploadDataForm(forms.Form):
@@ -12,6 +13,7 @@ class UploadDataForm(forms.Form):
 
     patient = forms.ModelChoiceField(queryset=None)
     data_type = forms.ChoiceField(choices=DATA_TYPES)
+    description = forms.CharField(widget=CKEditorWidget())
     file = forms.FileField()
 
     patient.widget.attrs = {'class':'form-control'}
