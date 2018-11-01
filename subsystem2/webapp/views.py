@@ -49,6 +49,7 @@ MAPPING = {
     'video/mpg': MOVIE_DATA,
     'application/msword': DOCUMENT_DATA,
     'text/plain': DOCUMENT_DATA
+}
   
 FILE_TYPES = {
     "Image": [
