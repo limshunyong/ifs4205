@@ -35,15 +35,22 @@ from .object import put_object, get_object
 from django.contrib import messages
 from minio.error import ResponseError
 
+MAPPING_EXTENSION = {
+    '.jpg': IMAGE_DATA,
+    '.png': IMAGE_DATA,
+    '.csv': TIME_SERIES_DATA,
+    '.mp4': MOVIE_DATA,
+    '.mpg': MOVIE_DATA,
+    '.doc': DOCUMENT_DATA
+}
 
-MAPPING = {
-    'image/jpg': IMAGE_DATA,
+MAPPING_TYPE = {
     'image/jpeg': IMAGE_DATA,
     'image/png': IMAGE_DATA,
+    'text/plain': TIME_SERIES_DATA,
     'video/mp4': MOVIE_DATA,
     'video/mpg': MOVIE_DATA,
-    'application/msword': DOCUMENT_DATA,
-    'text/plain': DOCUMENT_DATA
+    'application/msword': DOCUMENT_DATA
 }
 
 
@@ -322,11 +329,59 @@ def therapist_upload_data(request):
 
             mime = magic.from_buffer(file.read(), mime=True)
             file.seek(0)
-            if mime in MAPPING.keys():
-                real_data_type = MAPPING[mime]
+            if mime in MAPPING_TYPE.keys():
+                real_data_type = MAPPING_TYPE[mime]
 
             else:
-                messages.error(request, 'Invalid file type')
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+
+                return render(request, 'therapist_upload.html', context)
+
+            if file_extension in MAPPING_EXTENSION.keys():
+                wrong_type = False
+                extension_type = MAPPING_EXTENSION[file_extension]
+                if extension_type == IMAGE_DATA:
+                    if file_extension == '.jpg' and mime != 'image/jpeg':
+                        wrong_type = True
+                    elif file_extension == '.png' and mime != 'image/png':
+                        wrong_type = True
+                elif extension_type == TIME_SERIES_DATA:
+                    if file_extension == '.csv' and mime != 'text/plain':
+                        wrong_type = True
+                elif extension_type == MOVIE_DATA:
+                    if file_extension == '.mp4' and mime != 'video/mp4':
+                        wrong_type = True
+                    elif file_extension == '.mpg' and mime != 'video/mpg':
+                        wrong_type = True
+                elif extension_type == DOCUMENT_DATA:
+                    if file_extension == '.doc' and mime != 'application/msword':
+                        wrong_type = True
+
+                if wrong_type:
+                    messages.error(request, 'Invalid file.')
+
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': form
+                    }
+
+                    return render(request, 'therapist_upload.html', context)
+
+            else:
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
 
                 context = {
                     'user': request.user,
@@ -336,7 +391,7 @@ def therapist_upload_data(request):
                 return render(request, 'therapist_upload.html', context)
 
             if int(data_type) != int(real_data_type):
-                messages.error(request, 'Invalid file')
+                messages.error(request, 'Invalid file. Choose the correct data type field.')
 
                 context = {
                     'user': request.user,
@@ -399,11 +454,59 @@ def patient_upload_data(request):
 
             mime = magic.from_buffer(file.read(), mime=True)
             file.seek(0)
-            if mime in MAPPING.keys():
-                real_data_type = MAPPING[mime]
+            if mime in MAPPING_TYPE.keys():
+                real_data_type = MAPPING_TYPE[mime]
 
             else:
-                messages.error(request, 'Invalid file type')
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': UploadPatientDataForm()
+                }
+
+                return render(request, 'patient_upload.html', context)
+
+            if file_extension in MAPPING_EXTENSION.keys():
+                wrong_type = False
+                extension_type = MAPPING_EXTENSION[file_extension]
+                if extension_type == IMAGE_DATA:
+                    if file_extension == '.jpg' and mime != 'image/jpeg':
+                        wrong_type = True
+                    elif file_extension == '.png' and mime != 'image/png':
+                        wrong_type = True
+                elif extension_type == TIME_SERIES_DATA:
+                    if file_extension == '.csv' and mime != 'text/plain':
+                        wrong_type = True
+                elif extension_type == MOVIE_DATA:
+                    if file_extension == '.mp4' and mime != 'video/mp4':
+                        wrong_type = True
+                    elif file_extension == '.mpg' and mime != 'video/mpg':
+                        wrong_type = True
+                elif extension_type == DOCUMENT_DATA:
+                    if file_extension == '.doc' and mime != 'application/msword':
+                        wrong_type = True
+
+                if wrong_type:
+                    messages.error(request, 'Invalid file')
+
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': UploadPatientDataForm()
+                    }
+
+                    return render(request, 'patient_upload.html', context)
+
+            else:
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
 
                 context = {
                     'user': request.user,
@@ -413,7 +516,7 @@ def patient_upload_data(request):
                 return render(request, 'patient_upload.html', context)
 
             if int(data_type) != int(real_data_type):
-                messages.error(request, 'Invalid file')
+                messages.error(request, 'Invalid file. Choose the correct data type field.')
 
                 context = {
                     'user': request.user,
