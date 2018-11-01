@@ -71,9 +71,22 @@ FILE_TYPES = {
     ]
 }
 
+MAX_IMAGE_SIZE = 10
+MAX_TIME_SERIES_SIZE = 0.1
+MAX_MOVIE_SIZE = 100
+MAX_DOCUMENT_SIZE = 10
+
+MAPSIZE = {
+    IMAGE_DATA: MAX_IMAGE_SIZE,
+    TIME_SERIES_DATA: MAX_TIME_SERIES_SIZE,
+    MOVIE_DATA: MAX_MOVIE_SIZE,
+    DOCUMENT_DATA: MAX_DOCUMENT_SIZE
+}
+
 # Validation for Time Series Data
 MAX_ALLOWED_CSV_LINES = 100
 MAX_ALLOWED_CSV_COLUMNS = 11
+
 
 # user_passes_test helper functions
 def is_therapist(user):
@@ -415,6 +428,20 @@ def therapist_upload_data(request):
                                         'DOCUMENT: \'.doc\'')
                 return render(request, 'therapist_upload.html', context)
 
+
+            size = MAPSIZE[int(data_type)]
+            max_size = size*1024*1024
+
+            if file.size > max_size:
+                messages.error(request, 'The maximum file size that can be uploaded is ' + str(size) + ' MB')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+
+                return render(request, 'therapist_upload.html', context)
+
             # Validation for Time Series Data
             for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
                 if idx >= MAX_ALLOWED_CSV_LINES:
@@ -511,6 +538,20 @@ def patient_upload_data(request):
                                         'TIME SERIES: \'.csv\' '
                                         'VIDEO: \'.mp4\', \'.mpg\' '
                                         'DOCUMENT: \'.doc\'')
+                return render(request, 'patient_upload.html', context)
+
+
+            size = MAPSIZE[int(data_type)]
+            max_size = size*1024*1024
+
+            if file.size > max_size:
+                messages.error(request, 'The maximum file size that can be uploaded is ' + str(size) + ' MB')
+
+                context = {
+                    'user': request.user,
+                    'upload_data_form': UploadPatientDataForm()
+                }
+
                 return render(request, 'patient_upload.html', context)
 
              # Validation for Time Series Data
