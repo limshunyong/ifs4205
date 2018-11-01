@@ -11,6 +11,7 @@ from django.dispatch import receiver
 from django_otp.models import Device
 from django_otp.plugins.otp_static.models import StaticDevice
 from auditlog.registry import auditlog
+from ckeditor.fields import RichTextField
 
 IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
@@ -170,7 +171,7 @@ class HealthData(models.Model):
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
     minio_filename = models.CharField(max_length=100, blank=False)
-    description = models.CharField(max_length=1000, blank=False)
+    description = RichTextField()
     date = models.DateTimeField('created on', auto_now_add=True)
 
     def __str__(self):
