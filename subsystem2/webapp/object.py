@@ -26,8 +26,8 @@ def put_object(object_name, data, length):
     etag = minioClient.put_object(BUCKET_NAME, object_name, data, length)
     return etag
 
-def get_object(object_name):
-    timeout = 10
+def get_object(object_name, timeout):
+
     # if bucket_name == 'images':
     #     timeout = 10
     # elif bucket_name == 'videos':
