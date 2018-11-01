@@ -26,6 +26,7 @@ from django.contrib import messages
 import django_otp as otp
 from django_otp.decorators import otp_required
 from django_otp.plugins.otp_static.models import StaticDevice
+from django.conf import settings
 
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData,\
 HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA,\
@@ -303,7 +304,8 @@ def patient_record_view(request, record_id):
 
 
 def resolve_minio_link(link):
-    return link.replace("http://minio:9000/", "http://127.0.0.1/")
+    MINIO_URL = getattr(settings, "MINIO_URL", None)
+    return link.replace("http://minio:9000/", MINIO_URL)
     
 
 @otp_required
