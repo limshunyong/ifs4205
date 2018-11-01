@@ -9,6 +9,8 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django_otp.models import Device
+from django_otp.plugins.otp_static.models import StaticDevice
+from auditlog.registry import auditlog
 
 IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
@@ -214,3 +216,15 @@ class BLEOTPDevice(Device):
             return False
         return True
 
+
+auditlog.register(Patient)
+auditlog.register(Therapist)
+auditlog.register(IsAPatientOf)
+auditlog.register(Researcher)
+auditlog.register(Ward)
+auditlog.register(VisitRecord)
+auditlog.register(HealthData)
+auditlog.register(HealthDataPermission)
+auditlog.register(UserProfile)
+auditlog.register(BLEOTPDevice)
+auditlog.register(StaticDevice)
