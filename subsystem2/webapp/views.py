@@ -7,7 +7,7 @@ import os.path
 from datetime import datetime
 import pytz
 import ed25519
-# import magic
+import magic
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -689,7 +689,7 @@ def get_patient_data(request):
                                 [id, title, description, date, patient_id, datatype, minio_filename, therapist_id])
 
                     except Exception as e:
-                        
+
                         print("patient with ", each, "does not exist")
 
                 return response
