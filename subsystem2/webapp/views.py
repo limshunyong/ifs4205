@@ -389,7 +389,7 @@ def therapist_upload_data(request):
 
                 return render(request, 'therapist_upload.html', context)
 
-            size = MAPSIZE[data_type]
+            size = MAPSIZE[int(data_type)]
             max_size = size*1024*1024
 
             if file.size > max_size:
@@ -487,7 +487,7 @@ def patient_upload_data(request):
 
                 return render(request, 'patient_upload.html', context)
 
-            size = MAPSIZE[data_type]
+            size = MAPSIZE[int(data_type)]
             max_size = size*1024*1024
 
             if file.size > max_size:
