@@ -426,10 +426,10 @@ def patient_upload_data(request):
 
                 context = {
                     'user': request.user,
-                    'upload_data_form': form
+                    'upload_data_form': uploadPatientDataForm()
                 }
 
-                return render(request, 'therapist_upload.html', context)
+                return render(request, 'patient_upload.html', context)
 
             patient_id = patient.id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
