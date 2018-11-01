@@ -37,6 +37,36 @@ class Patient(models.Model):
         (MALE, 'MALE'),
         (FEMALE, 'FEMALE')
     )
+    O_NEGATIVE = "ON"
+    O_POSITIVE = "OP"
+    A_NEGATIVE = "AN"
+    A_POSITIVE = "AP"
+    B_NEGATIVE = "BN"
+    B_POSITIVE = "BP"
+    AB_NEGATIVE = "ABN"
+    AB_POSITIVE = "ABP"
+    BLOOD_TYPES = (
+        (O_NEGATIVE, "O-"),
+        (O_POSITIVE, "O+"),
+        (A_NEGATIVE, "A-"),
+        (A_POSITIVE, "A+"),
+        (B_NEGATIVE, "B-"),
+        (B_POSITIVE, "B+"),
+        (AB_NEGATIVE, "AB-"),
+        (AB_POSITIVE, "AB+"),
+    )
+    CHINESE = "CHINESE"
+    MALAY = "MALAY"
+    INDIAN = "INDIAN"
+    CAUCASIAN = "CAUCASIAN"
+    OTHER = "OTHER"
+    RACES = (
+        (CHINESE, "Chinese"),
+        (MALAY, "Malay"),
+        (INDIAN, "Indian"),
+        (CAUCASIAN, "Caucasian"),
+        (OTHER, "Other"),
+    )
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, blank=False)
     nric = models.CharField(max_length=9, blank=False,
@@ -45,6 +75,9 @@ class Patient(models.Model):
     address = models.CharField(max_length=100, blank=False)
     contact_number = models.CharField(max_length=12, blank=False)
     date_of_birth = models.DateField('birthday', validators=[no_future_date])
+    bloodtype = models.CharField(max_length=4, blank=False, choices=BLOOD_TYPES)
+    race = models.CharField(max_length=100, blank=False, choices=RACES)
+
     # default permission for new (Patient, Therapist) relationship
     read_access = models.BooleanField(default=True)
     def __str__(self):

@@ -26,5 +26,7 @@ urlpatterns = [
 	url(r'^therapist/patient/(?P<patient_id>\d+)/(?P<type>\d+)$', views.therapist_list_patient_record_view),
 	url(r'^therapist/upload$', views.therapist_upload_data, name='therapist_upload_data'),
 
+        # Researcher Views
+
 	url(r'^keygen/', views.keygen_view),
 ]
