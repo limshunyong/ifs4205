@@ -1,9 +1,13 @@
 import json
 import csv
 import codecs
+import io
 import time
 import urllib.parse
+import random
+import re
 import os.path
+from itertools import zip_longest
 from datetime import datetime
 import pytz
 import ed25519
@@ -34,7 +38,7 @@ from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRec
     HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA, \
     MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm, UploadPatientDataForm
-from .object import put_object, get_object
+from .object import put_object, get_object, download_object
 from django.contrib import messages
 from minio.error import ResponseError
 
@@ -68,6 +72,9 @@ FILE_TYPES = {
     ]
 }
 
+# Validation for Time Series Data
+MAX_ALLOWED_CSV_LINES = 100
+MAX_ALLOWED_CSV_COLUMNS = 11
 
 # user_passes_test helper functions
 def is_therapist(user):
@@ -274,7 +281,7 @@ def therapist_list_patient_record_view(request, patient_id=None, type=None):
 
 @otp_required
 def patient_record_view(request, record_id):
-    print(record_id)
+    # print(record_id)
 
     context = {
         'user': request.user,
@@ -305,10 +312,10 @@ def patient_record_view(request, record_id):
         # for sidebar
         context['therapist_patients'] = Patient.objects.filter(isapatientof__therapist=therapist)
 
-    print(health_data.data_type)
-    print(health_data.minio_filename)
+    print("data type: ", health_data.data_type)
+    print("filename: ", health_data.minio_filename)
     obj_link = get_object(health_data.minio_filename, 10)
-    print(obj_link)
+    print("obj link:" , obj_link)
 
     context['description'] = health_data.description
     if health_data.data_type == IMAGE_DATA:
@@ -318,7 +325,34 @@ def patient_record_view(request, record_id):
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_movie.html', context)
     elif health_data.data_type == TIME_SERIES_DATA:
-        return HttpResponse('To implement.')
+        obj_contents_stream = download_object(health_data.minio_filename)
+
+        obj_contents = ""
+        for data in obj_contents_stream.stream(32*1024):
+            obj_contents += data.decode()
+
+        transposed_csv_contents = zip_longest(*csv.reader(obj_contents.splitlines(), delimiter=','))
+
+        chart_lines = []
+        for idx, row in enumerate(transposed_csv_contents):
+            if idx == 0:
+                chart_labels = list(row)
+            else: 
+                r, g, b = (random.randint(0,255), random.randint(0, 255), random.randint(0, 255))
+                chart_lines.append({
+                    "label": "Column %s" % idx,
+                    "backgroundColor": "rgb(%s,%s,%s)" % (r, g, b),
+                    "borderColor": "rgb(%s,%s,%s)" % (r, g, b),
+                    "data": list(row),
+                    "fill": False
+                })
+
+        chart_data = {
+                          "labels": chart_labels,
+                          "datasets": chart_lines
+                      }
+        context['chart_data'] = json.dumps(chart_data)
+        return render(request, 'patient_record_bp.html', context)
     elif health_data.data_type == DOCUMENT_DATA:
         return HttpResponse('To implement.')
     else:
@@ -363,19 +397,32 @@ def therapist_upload_data(request):
                     wrong_type = False
                     break
 
+            context = {
+                        'user': request.user,
+                        'upload_data_form': form
+                    }
+
             if wrong_type:
                 messages.error(request, 'Invalid file type. File type should be: '
                                         'IMAGE: \'.jpg\', \'.png\' '
                                         'TIME SERIES: \'.csv\' '
                                         'VIDEO: \'.mp4\', \'.mpg\' '
                                         'DOCUMENT: \'.doc\'')
-
-                context = {
-                    'user': request.user,
-                    'upload_data_form': form
-                }
-
                 return render(request, 'therapist_upload.html', context)
+
+            # Validation for Time Series Data
+            for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
+                if idx >= MAX_ALLOWED_CSV_LINES:
+                    messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
+                    return render(request, 'therapist_upload.html', context)
+                for idx, col in enumerate(row):
+                    if idx >= MAX_ALLOWED_CSV_COLUMNS:
+                        messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+                        return render(request, 'therapist_upload.html', context)
+                    if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
+                        messages.error(request, "Invalid characters in CSV file, only numbers allowed")
+                        return render(request, 'therapist_upload.html', context)
+            file.seek(0)
 
             patient_id = form.cleaned_data['patient'].id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
@@ -448,19 +495,32 @@ def patient_upload_data(request):
                     wrong_type = False
                     break
 
+            context = {
+                    'user': request.user,
+                    'upload_data_form': UploadPatientDataForm()
+                }
+
             if wrong_type:
                 messages.error(request, 'Invalid file type. File type should be: '
                                         'IMAGE: \'.jpg\', \'.png\' '
                                         'TIME SERIES: \'.csv\' '
                                         'VIDEO: \'.mp4\', \'.mpg\' '
                                         'DOCUMENT: \'.doc\'')
-
-                context = {
-                    'user': request.user,
-                    'upload_data_form': UploadPatientDataForm()
-                }
-
                 return render(request, 'patient_upload.html', context)
+
+             # Validation for Time Series Data
+            for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
+                if idx >= MAX_ALLOWED_CSV_LINES:
+                    messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
+                    return render(request, 'patient_upload.html', context)
+                for idx, col in enumerate(row):
+                    if idx >= MAX_ALLOWED_CSV_COLUMNS:
+                        messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+                        return render(request, 'patient_upload.html', context)
+                    if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
+                        messages.error(request, "Invalid characters in CSV file, only numbers allowed")
+                        return render(request, 'patient_upload.html', context)
+            file.seek(0)
 
             patient_id = patient.id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
