@@ -35,8 +35,7 @@ from django.conf import settings
 
 
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, \
-    HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA, \
-    MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
+    HealthDataPermission, UserProfile, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm, UploadPatientDataForm
 from .object import put_object, get_object, download_object
 from django.contrib import messages
@@ -46,15 +45,15 @@ from minio.error import ResponseError
 TOKEN = os.environ.get('SEC_TOKEN')
 
 MAPPING = {
-    'image/jpg': IMAGE_DATA,
-    'image/jpeg': IMAGE_DATA,
-    'image/png': IMAGE_DATA,
-    'video/mp4': MOVIE_DATA,
-    'video/mpg': MOVIE_DATA,
-    'application/msword': DOCUMENT_DATA,
-    'text/plain': DOCUMENT_DATA
+    'image/jpg': HealthData.IMAGE_DATA,
+    'image/jpeg': HealthData.IMAGE_DATA,
+    'image/png': HealthData.IMAGE_DATA,
+    'video/mp4': HealthData.MOVIE_DATA,
+    'video/mpg': HealthData.MOVIE_DATA,
+    'application/msword': HealthData.DOCUMENT_DATA,
+    'text/plain': HealthData.DOCUMENT_DATA
 }
-  
+
 FILE_TYPES = {
     "Image": [
         { "mime": "image/jpeg", "ext": ".jpg" },
@@ -91,6 +90,12 @@ def is_patient(user):
     except:
         return False
 
+# user_passes_test helper functions
+def is_researcher(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_RESEARCHER
+    except:
+        return False
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -318,13 +323,13 @@ def patient_record_view(request, record_id):
     print("obj link:" , obj_link)
 
     context['description'] = health_data.description
-    if health_data.data_type == IMAGE_DATA:
+    if health_data.data_type == HealthData.IMAGE_DATA:
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_image.html', context)
-    elif health_data.data_type == MOVIE_DATA:
+    elif health_data.data_type == HealthData.MOVIE_DATA:
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_movie.html', context)
-    elif health_data.data_type == TIME_SERIES_DATA:
+    elif health_data.data_type == HealthData.TIME_SERIES_DATA:
         obj_contents_stream = download_object(health_data.minio_filename)
 
         obj_contents = ""
@@ -337,7 +342,7 @@ def patient_record_view(request, record_id):
         for idx, row in enumerate(transposed_csv_contents):
             if idx == 0:
                 chart_labels = list(row)
-            else: 
+            else:
                 r, g, b = (random.randint(0,255), random.randint(0, 255), random.randint(0, 255))
                 chart_lines.append({
                     "label": "Column %s" % idx,
@@ -353,7 +358,7 @@ def patient_record_view(request, record_id):
                       }
         context['chart_data'] = json.dumps(chart_data)
         return render(request, 'patient_record_bp.html', context)
-    elif health_data.data_type == DOCUMENT_DATA:
+    elif health_data.data_type == HealthData.DOCUMENT_DATA:
         return HttpResponse('To implement.')
     else:
         return HttpResponseForbidden()
@@ -362,7 +367,7 @@ def patient_record_view(request, record_id):
 def resolve_minio_link(link):
     MINIO_URL = getattr(settings, "MINIO_URL", None)
     return link.replace("http://minio:9000/", MINIO_URL)
-    
+
 
 @otp_required
 @user_passes_test(is_therapist)
@@ -389,7 +394,7 @@ def therapist_upload_data(request):
             mime = magic.from_buffer(file.read(), mime=True).lower()
             file.seek(0)
 
-            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
+            data_type_name = [x for x in HealthData.DATA_TYPES if int(data_type) in x][0][1]
 
             wrong_type = True
             for allowed_types in FILE_TYPES.get(data_type_name):
@@ -487,7 +492,7 @@ def patient_upload_data(request):
 
             mime = magic.from_buffer(file.read(), mime=True).lower()
             file.seek(0)
-            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
+            data_type_name = [x for x in HealthData.DATA_TYPES if int(data_type) in x][0][1]
 
             wrong_type = True
             for allowed_types in FILE_TYPES.get(data_type_name):
