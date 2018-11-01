@@ -31,5 +31,4 @@ urlpatterns = [
     url(r'^database/retrieve/patient$', views.get_patient_data),
 
     url(r'^keygen/', views.keygen_view),
-
 ]
