@@ -11,6 +11,9 @@
                   <i class="fas fa-table"></i>
                   Movie Record #{{ record_id }}
               </div>
+              <div class="row">
+                  {{ description|safe }}
+              </div>
               <video controls>
                 <source src="{{ obj_link }}" type='video/mp4'>
               </video>
