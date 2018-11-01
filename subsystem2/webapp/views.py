@@ -35,15 +35,21 @@ from .object import put_object, get_object
 from django.contrib import messages
 from minio.error import ResponseError
 
-
-MAPPING = {
-    'image/jpg': IMAGE_DATA,
-    'image/jpeg': IMAGE_DATA,
-    'image/png': IMAGE_DATA,
-    'video/mp4': MOVIE_DATA,
-    'video/mpg': MOVIE_DATA,
-    'application/msword': DOCUMENT_DATA,
-    'text/plain': DOCUMENT_DATA
+FILE_TYPES = {
+    "Image": [
+        { "mime": "image/jpeg", "ext": ".jpg" },
+        { "mime": "image/png", "ext": ".png" }
+    ],
+    "Movie": [
+        { "mime": "video/mp4", "ext": ".mp4" },
+        { "mime": "video/mpg", "ext": ".mpg" }
+    ],
+    "Document": [
+        { "mime": "application/msword", "ext": ".doc" }
+    ],
+    "Time Series": [
+        { "mime": "text/plain", "ext": ".csv" }
+    ]
 }
 
 
@@ -318,25 +324,27 @@ def therapist_upload_data(request):
         if form.is_valid():
             file = form.cleaned_data['file']
             _, file_extension = os.path.splitext(file.name)
+            if file_extension:
+                file_extension = file_extension.lower()
             data_type = form.cleaned_data['data_type']
 
-            mime = magic.from_buffer(file.read(), mime=True)
+            mime = magic.from_buffer(file.read(), mime=True).lower()
             file.seek(0)
-            if mime in MAPPING.keys():
-                real_data_type = MAPPING[mime]
 
-            else:
-                messages.error(request, 'Invalid file type')
+            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
 
-                context = {
-                    'user': request.user,
-                    'upload_data_form': form
-                }
+            wrong_type = True
+            for allowed_types in FILE_TYPES.get(data_type_name):
+                if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
+                    wrong_type = False
+                    break
 
-                return render(request, 'therapist_upload.html', context)
-
-            if int(data_type) != int(real_data_type):
-                messages.error(request, 'Invalid file')
+            if wrong_type:
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
 
                 context = {
                     'user': request.user,
@@ -395,25 +403,26 @@ def patient_upload_data(request):
         if form.is_valid():
             file = form.cleaned_data['file']
             _, file_extension = os.path.splitext(file.name)
+            if file_extension:
+                file_extension = file_extension.lower()
             data_type=form.cleaned_data['data_type']
 
-            mime = magic.from_buffer(file.read(), mime=True)
+            mime = magic.from_buffer(file.read(), mime=True).lower()
             file.seek(0)
-            if mime in MAPPING.keys():
-                real_data_type = MAPPING[mime]
+            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
 
-            else:
-                messages.error(request, 'Invalid file type')
+            wrong_type = True
+            for allowed_types in FILE_TYPES.get(data_type_name):
+                if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
+                    wrong_type = False
+                    break
 
-                context = {
-                    'user': request.user,
-                    'upload_data_form': UploadPatientDataForm()
-                }
-
-                return render(request, 'patient_upload.html', context)
-
-            if int(data_type) != int(real_data_type):
-                messages.error(request, 'Invalid file')
+            if wrong_type:
+                messages.error(request, 'Invalid file type. File type should be: '
+                                        'IMAGE: \'.jpg\', \'.png\' '
+                                        'TIME SERIES: \'.csv\' '
+                                        'VIDEO: \'.mp4\', \'.mpg\' '
+                                        'DOCUMENT: \'.doc\'')
 
                 context = {
                     'user': request.user,
