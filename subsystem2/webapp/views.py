@@ -360,11 +360,19 @@ def therapist_upload_data(request):
             except ResponseError as err:
                 print(err)
                 messages.error(request, 'ResponseError: file upload failed')
-                return render(request, 'therapist_upload.html')
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+                return render(request, 'therapist_upload.html', context)
             except MaxRetryError as err:
                 print(err)
                 messages.error(request, 'MaxRetryError: file upload failed')
-                return render(request, 'therapist_upload.html')
+                context = {
+                    'user': request.user,
+                    'upload_data_form': form
+                }
+                return render(request, 'therapist_upload.html', context)
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 therapist=therapist,
@@ -405,7 +413,7 @@ def patient_upload_data(request):
             _, file_extension = os.path.splitext(file.name)
             if file_extension:
                 file_extension = file_extension.lower()
-            data_type=form.cleaned_data['data_type']
+            data_type = form.cleaned_data['data_type']
 
             mime = magic.from_buffer(file.read(), mime=True).lower()
             file.seek(0)
@@ -437,26 +445,31 @@ def patient_upload_data(request):
             try:
                 put_object(minio_filename, file.file, file.size)
                 patient_data = HealthData(
-                   patient=Patient.objects.get(pk=patient_id),
+                    patient=Patient.objects.get(pk=patient_id),
                     data_type=data_type,
                     title=file.name,
                     description='',
-                   minio_filename=minio_filename
+                    minio_filename=minio_filename
                 )
                 patient_data.save()
                 messages.success(request, 'File upload successful')
             except ResponseError as err:
                 print(err)
                 messages.error(request, 'ResponseError: file upload failed')
-                return render(request, 'patient_upload.html')
             except MaxRetryError as err:
                 print(err)
                 messages.error(request, 'MaxRetryError: file upload failed')
-                return render(request, 'patient_upload.html')
 
             context = {
                 'user': request.user,
                 'upload_data_form': UploadPatientDataForm()
+            }
+            return render(request, 'patient_upload.html', context)
+
+        else:
+            context = {
+                'user': request.user,
+                'upload_data_form': form
             }
             return render(request, 'patient_upload.html', context)
 
