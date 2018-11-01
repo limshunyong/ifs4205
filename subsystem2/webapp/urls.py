@@ -28,8 +28,7 @@ urlpatterns = [
     url(r'^therapist/upload$', views.therapist_upload_data, name='therapist_upload_data'),
 
     # Subsystem 4
-    url(r'^database/retrieve/patient$', views.get_patient_particulars),
-    url(r'^database/retrieve/data$', views.get_patient_data),
+    url(r'^database/retrieve/patient$', views.get_patient_data),
 
     url(r'^keygen/', views.keygen_view),
 

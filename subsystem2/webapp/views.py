@@ -37,6 +37,8 @@ from .object import put_object, get_object
 from django.contrib import messages
 from minio.error import ResponseError
 
+TOKEN = os.environ.get('SEC_TOKEN')
+
 MAPPING = {
     'image/jpg': IMAGE_DATA,
     'image/jpeg': IMAGE_DATA,
@@ -286,7 +288,7 @@ def patient_record_view(request, record_id):
 
     print(health_data.data_type)
     print(health_data.minio_filename)
-    obj_link = get_object(health_data.minio_filename)
+    obj_link = get_object(health_data.minio_filename, 10)
     print(obj_link)
 
     if health_data.data_type == IMAGE_DATA:
@@ -585,20 +587,23 @@ def patient_permission_detail_view(request, therapist_id=None):
 
 
 @csrf_exempt
-def get_patient_particulars(request):
+def get_patient_data(request):
     if request.method == 'POST':
-        # compare the token - to be changed
-        if request.POST['stoken'] == '1234abcd':
+        # compare the token
+        if request.POST['stoken'] == TOKEN:
             nric = request.POST['nric']
 
             # Create the HttpResponse object with the appropriate CSV header.
             response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="patientProfile.csv"'
+            response['Content-Disposition'] = 'attachment; filename="patientData.csv"'
             writer = csv.writer(response)
 
-            writer.writerow(["id", "name", "nric", "sex", "address", "contact_number", "date_of_birth"])
             # request for all content
+
             if nric == 'all':
+
+                writer.writerow(["id", "name", "nric", "sex", "address", "contact_number", "date_of_birth"])
+
                 patients = Patient.objects.all()
 
                 for p in patients:
@@ -611,9 +616,35 @@ def get_patient_particulars(request):
                     date_of_birth = p.date_of_birth
                     writer.writerow([id, pname, pnric, sex, address, contact_number, date_of_birth])
 
+                writer.writerow(["=" * 80])
+
+                writer.writerow(
+                    ["data_id", "title", "description", "date", "patient_id", "data_type", "minio_filename", "therapist_id", "minio link"])
+
+                data = HealthData.objects.all()
+
+                for d in data:
+                    id = d.id
+                    title = d.title
+                    description = d.description
+                    date = d.date
+                    patient_id = d.patient_id
+                    datatype = d.data_type
+                    minio_filename = d.minio_filename
+                    therapist_id = d.therapist_id
+
+                    obj_link = get_object(minio_filename, 86400)
+
+                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
+
                 return response
+
             else:
+
+                writer.writerow(["id", "name", "nric", "sex", "address", "contact_number", "date_of_birth"])
+
                 nricarray = nric.split(",")
+
                 for each in nricarray:
                     try:
                         p = Patient.objects.get(nric=each)
@@ -630,53 +661,17 @@ def get_patient_particulars(request):
                     except Exception as e:
                         print("Patient with nric ", each, " does not exist")
 
-                return response
-        else:
-            return HttpResponseForbidden("Invalid Token")
-    else:
-        return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+                writer.writerow(["=" * 80])
 
+                writer.writerow(["data_id", "title", "description", "date", "patient_id", "data_type", "minio_filename", "therapist_id", "minio_link"])
 
-@csrf_exempt
-def get_patient_data(request):
-    if request.method == 'POST':
-        # compare the token - to be changed
-        if request.POST['stoken'] == '1234abcd':
-            nric = request.POST['nric']
-            # Create the HttpResponse object with the appropriate CSV header.
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="patientData.csv"'
-            writer = csv.writer(response)
-
-            writer.writerow(
-                ["id", "title", "description", "date", "patient_id", "data_type", "minio_filename", "therapist_id"])
-
-            # request for all content
-            if nric == 'all':
-                # fetch and return all files in minio
-                data = HealthData.objects.all()
-
-                for d in data:
-                    id = d.id
-                    title = d.title
-                    description = d.description
-                    date = d.date
-                    patient_id = d.patient_id
-                    datatype = d.data_type
-                    minio_filename = d.minio_filename
-                    therapist_id = d.therapist_id
-                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id])
-
-                return response
-            else:
-                nricarray = nric.split(",")
                 for each in nricarray:
                     try:
                         # get patient id
-                        id = Patient.objects.get(nric=each).id
-                        data = HealthData.objects.filter(patient_id=id)
+                        patient_id = Patient.objects.get(nric=each).id
+                        data = HealthData.objects.filter(patient_id=patient_id)
                         for i in data:
-                            id = i.id
+                            data_id = i.id
                             title = i.title
                             description = i.description
                             date = i.date
@@ -685,8 +680,10 @@ def get_patient_data(request):
                             minio_filename = i.minio_filename
                             therapist_id = i.therapist_id
 
+                            obj_link = get_object(minio_filename, 86400)
+
                             writer.writerow(
-                                [id, title, description, date, patient_id, datatype, minio_filename, therapist_id])
+                                [data_id, title, description, date, patient_id, datatype, minio_filename, therapist_id, obj_link])
 
                     except Exception as e:
 
