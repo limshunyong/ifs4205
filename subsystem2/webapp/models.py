@@ -225,17 +225,6 @@ class UserProfile(models.Model):
     researcher = models.ForeignKey(Researcher, blank=True, null=True, on_delete=models.CASCADE)
 
 
-@receiver(post_save, sender=DjangoUser)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-
-
-@receiver(post_save, sender=DjangoUser)
-def save_user_profile(sender, instance, **kwargs):
-    instance.userprofile.save()
-
-
 class BLEOTPDevice(Device):
     key = models.CharField(max_length=64, default="")
     otp_challenge = models.CharField(max_length=1024, default="")

@@ -7,3 +7,4 @@ python-magic
 django-auditlog
 django-ckeditor
 ipython
+git+https://github.com/SecurityCapstone-2018-Team2/basic-mondrian.git#egg=basic_mondrian
