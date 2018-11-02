@@ -140,12 +140,51 @@ def otp_view(request, next=None):
         return redirect(reverse('login'))
 
     context = {
-        'devices': otp.devices_for_user(request.user)
+        'devices': [x for x in otp.devices_for_user(request.user) if isinstance(x, BLEOTPDevice)]
     }
     return render(request, "otp.html", context)
 
 
-def verify_otp(request):
+def otp_static_view(request, next=None):
+    next_url = request.GET.get('next')
+    print(request.user, request.user.is_authenticated, request.user.is_verified())
+    if not request.user.is_authenticated:
+        return redirect(reverse('login'))
+
+    context = {
+        'devices': [x for x in otp.devices_for_user(request.user) if isinstance(x, StaticDevice)]
+    }
+    return render(request, "otp_static.html", context)
+
+
+def verify_ble_otp(request):
+    if not request.user.is_authenticated:
+        return redirect(reverse('login'))
+
+    if request.method == 'POST':
+        token = request.POST['otp_token']
+        device_id = request.POST['otp_device']
+        device = otp.models.Device.from_persistent_id(device_id)
+        print(str(type(device)), isinstance(device, otp.plugins.otp_static.models.StaticDevice))
+        if token and device:
+            if isinstance(device, BLEOTPDevice) and device.verify_token(token):
+                print("========ble ok")
+                otp.login(request, device)
+                if request.user.userprofile.role == UserProfile.ROLE_PATIENT:
+                    return redirect(reverse('patient_index'))
+                elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
+                    return redirect(reverse('therapist_index'))
+                # TODO redirect researcher 
+            else:
+                messages.add_message(request, messages.ERROR, "Invalid token.")
+                return redirect(reverse('select_otp'))
+        else:
+            messages.add_message(request, messages.ERROR, "token or device_id not set.")
+            return redirect(reverse('select_otp'))
+    return redirect(reverse('select_otp'))
+
+
+def verify_static_otp(request):
     if not request.user.is_authenticated:
         return redirect(reverse('login'))
 
@@ -163,21 +202,18 @@ def verify_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-            elif isinstance(device, BLEOTPDevice) and device.verify_token(token):
-                print("========ble ok")
-                otp.login(request, device)
-                # TODO redirect by account type
-                return redirect(reverse('patient_index'))
+                # TODO redirect researcher 
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
-                return redirect(reverse('select_otp'))
+                return redirect(reverse('select_static_otp'))
         else:
             messages.add_message(request, messages.ERROR, "token or device_id not set.")
-            return redirect(reverse('select_otp'))
-    return redirect(reverse('select_otp'))
+            return redirect(reverse('select_static_otp'))
+    return redirect(reverse('select_static_otp'))
 
 
-def challenge_view(request):
+
+def otp_ble_view(request):
     device_id = request.POST['device_id']
     device = otp.models.Device.from_persistent_id(device_id)
     error_msg = None
@@ -192,22 +228,22 @@ def challenge_view(request):
     device.save()
 
     # TODO remove test code below
-    signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
-    print('verifying_key', device.key)
-    print('signing_key', signing_key_str)
-    verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
-    signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
-    sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
-    print('challenge', msg_to_be_signed)
-    print('signature', sig)
-    verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
+    # signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
+    # print('verifying_key', device.key)
+    # print('signing_key', signing_key_str)
+    # verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
+    # signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
+    # sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
+    # print('challenge', msg_to_be_signed)
+    # print('signature', sig)
+    # verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
 
     context = {
         'error_msg': error_msg,
         'challenge': msg_to_be_signed,
         'device_id': request.POST['device_id']
     }
-    return render(request, 'challenge.html', context)
+    return render(request, 'otp_ble.html', context)
 
 
 def logout_view(request):
