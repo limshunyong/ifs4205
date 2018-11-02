@@ -13,10 +13,12 @@ ALLOWED_HOSTS = ["192.168.99.100", "127.0.0.1"]
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'OPTIONS': {
-            'read_default_file': '/etc/mysql/my.cnf',
-        },
+        'ENGINE': 'django.db.backends.mysql', 
+        'NAME': 'subsystem2',
+        'USER': 'admin',
+        'PASSWORD': 'admin',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
 MINIO_URL = "http://127.0.0.1/"
