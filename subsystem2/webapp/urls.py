@@ -29,6 +29,7 @@ urlpatterns = [
 
     # Subsystem 4
     url(r'^database/retrieve/patient$', views.get_patient_data),
+    url(r'^database/upload/patient$', views.upload_ext_patient),
 
     url(r'^keygen/', views.keygen_view),
 ]

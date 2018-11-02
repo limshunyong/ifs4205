@@ -17,11 +17,13 @@ IMAGE_DATA = 0
 TIME_SERIES_DATA = 1
 MOVIE_DATA = 2
 DOCUMENT_DATA = 3
+OTHERS = 4
 DATA_TYPES = (
     (IMAGE_DATA, 'Image'),
     (TIME_SERIES_DATA, 'Time Series'),
     (MOVIE_DATA, 'Movie'),
-    (DOCUMENT_DATA, 'Document')
+    (DOCUMENT_DATA, 'Document'),
+    (OTHERS, 'Others')
 )
 
 

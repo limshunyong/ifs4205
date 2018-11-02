@@ -722,3 +722,59 @@ def get_patient_data(request):
             return HttpResponseForbidden("Invalid Token")
     else:
         return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+@csrf_exempt
+def upload_ext_patient(request):
+
+    if request.method == 'POST':
+        if request.POST['stoken'] != TOKEN:
+            return HttpResponseForbidden("Invalid Token")
+
+        name = request.FILES['file'].name
+        response = ""
+        ufile = request.FILES['file'].read().decode('utf-8-sig').splitlines()
+
+        if name == "Patients.csv":
+
+            for i in range(1,len(ufile)):
+                row = ufile[i].split(",")
+                patient_exist = Patient.objects.filter(nric=row[5]).exists()
+                if not patient_exist:
+                    #add into database
+                    p = Patient(name=row[1], nric=row[5], sex=row[2], address=row[4]+row[7], contact_number=row[9],
+                                date_of_birth=datetime.today())
+
+                    p.save()
+                else:
+                    response += "Patient with NRIC " + row[5] + \
+                                " is not added into the database as the record is already exist. \n"
+
+        elif name == "Patients Records.csv":
+
+            for i in range(1, len(ufile)):
+                row = ufile[i].split(",")
+
+                title = "External Database Record"
+                description = "External Database Record"
+
+                try:
+                    #get patient id based on NRIC
+                    patient_id = Patient.objects.get(nric=row[1]).id
+
+                    #insert into healthdata
+                    d = HealthData(title="External Database Record", description=row[2]+ " - " + row[3],
+                                   date=row[4], patient_id=patient_id, data_type=4, minio_filename=row[5])
+                    d.save()
+
+                except Exception as e:
+                    response += "Data ID " + row[0] + " for NRIC " + row[1] + \
+                            " is not added into the database the user does not exist in our records. \n"
+
+        if response == "":
+            return HttpResponse("OK")
+        else:
+            return HttpResponse(response)
+
+    else:
+        return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
