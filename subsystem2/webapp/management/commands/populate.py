@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from webapp.models import UserProfile, Patient, Therapist, IsAPatientOf
+from webapp.models import UserProfile, Patient, Therapist, IsAPatientOf, HealthData
 
 import binascii
 import os
@@ -74,6 +74,34 @@ def assign_patient(therapist, patient):
     newpair = IsAPatientOf.objects.create(therapist=therapist, patient=patient)
     newpair.save()
 
+def add_random_diagnosis(patient, therapist):
+    description = random.choice(DIAGNOSES)
+    newobj = HealthData.objects.create(patient=patient, therapist=therapist,
+            data_type=HealthData.DIAGNOSIS_DATA, title="Diagnosis", description=description)
+    newobj.save()
+    return newobj
+
+def add_random_blood_pressure(patient, therapist):
+    description = "{}/{}".format(random.randint(70, 190), random.randint(40, 100))
+    newobj = HealthData.objects.create(patient=patient, therapist=therapist,
+            data_type=HealthData.BLOOD_PRESSURE, title="Blood Pressure", description=description)
+    newobj.save()
+    return newobj
+
+def add_random_height(patient, therapist):
+    description = "{}".format(random.randint(120, 180))
+    newobj = HealthData.objects.create(patient=patient, therapist=therapist,
+            data_type=HealthData.HEIGHT, title="Height", description=description)
+    newobj.save()
+    return newobj
+
+def add_random_weight(patient, therapist):
+    description = "{}".format(random.randint(30, 90))
+    newobj = HealthData.objects.create(patient=patient, therapist=therapist,
+            data_type=HealthData.WEIGHT, title="Weight", description=description)
+    newobj.save()
+    return newobj
+
 def populate():
     # Create 3 therapists first.
     for i in range(3):
@@ -81,9 +109,20 @@ def populate():
     therapists = list(Therapist.objects.all())
 
     # Create 100 random patients, assigning them to random therapists.
+    tp_pairs = []
     for i in range(100):
         current_patient = create_random_patient()
-        assign_patient(random.choice(therapists), current_patient.userprofile.patient)
+        assigned_therapist = random.choice(therapists)
+        assigned_patient = current_patient.userprofile.patient
+        assign_patient(assigned_therapist, assigned_patient)
+        tp_pairs.append((assigned_patient, assigned_therapist))
+
+    # For each patient, add a random diagnosis, a blood pressure reading, a height, and weight.
+    for patient, therapist in tp_pairs:
+        add_random_diagnosis(patient, therapist)
+        add_random_blood_pressure(patient, therapist)
+        add_random_height(patient, therapist)
+        add_random_weight(patient, therapist)
 
 
 class Command(BaseCommand):

@@ -7,31 +7,38 @@
     <div class="container-fluid">
       <main>
 
-        {% if selected_patient %}
         <div class="card mb-3">
           <div class="card-header">
             <i class="fas fa-table"></i>
-            Records for {{ selected_patient.name}}
+            Anonymized Records for All Diagnoses
           </div>
           <div class="card-body">
             <div class="table-responsive">
               <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Issued by</th>
-                    <th>Type</th>
+                    <th>Diagnosis</th>
+                    <th>Sex</th>
+                    <th>Age</th>
+                    <th>Race</th>
+                    <th>Blood-Type</th>
+                    <th>Average Blood Pressure</th>
+                    <th>Average Height</th>
+                    <th>Average Weight</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% if records %}
                   {% for r in records %}
                   <tr>
-                    <td>{{ r.date }}</td>
-                    <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
-                    <td>{{ r.therapist.name }}</td>
-                    <td>{% for type in DATA_TYPES %}{% if forloop.counter0 == r.data_type %}{{type}}{% endif %}{% endfor %}</td>
+                    <td>{{ r.0 }}</td>
+                    <td>{{ r.1 }}</td>
+                    <td>{{ r.2 }}</td>
+                    <td>{{ r.3 }}</td>
+                    <td>{{ r.4 }}</td>
+                    <td>{{ r.5 }}</td>
+                    <td>{{ r.6 }}</td>
+                    <td>{{ r.7 }}</td>
                   </tr>
                   {% endfor %}
                   {% endif %}
@@ -40,9 +47,6 @@
             </div>
           </div>
         </div>
-        {% else %}
-        Select a Patient to view records.
-        {% endif %}
       </main>
     </div>
   </div>
