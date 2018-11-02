@@ -1,5 +1,4 @@
-from .models import UserProfile
-
+from .models import UserProfile, HealthData
 def user_roles(request):
     """    
     User roles are used to generate individual navbar designs 
@@ -9,3 +8,11 @@ def user_roles(request):
     'ROLE_PATIENT': UserProfile.ROLE_PATIENT,
     'ROLE_THERAPIST': UserProfile.ROLE_THERAPIST
     }
+
+def data_types(request):
+	types = []
+	for d in HealthData.DATA_TYPES:
+		types.append(d[1])
+	return {
+		'DATA_TYPES': types
+	}

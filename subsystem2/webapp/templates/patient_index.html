@@ -29,7 +29,7 @@
                     <td>{{ r.date }}</td>
                     <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
                     <td>{{ r.therapist.name }}</td>
-                    <td>{{ r.type }}</td>
+                    <td>{% for type in DATA_TYPES %}{% if forloop.counter0 == r.data_type %}{{type}}{% endif %}{% endfor %}</td>
                     <td><a href="/web/patient/record/{{ r.id }}/permission" target="_blank"><button type="button" class="btn btn-info">Review</button></a></td>
                   </tr>
                   {% endfor %}
