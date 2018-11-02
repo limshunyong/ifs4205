@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="wrapper">
+  {% include "sidebar.html" %}
+  <div id="content-wrapper">
+    <div class="container-fluid">
+      <main>
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fas fa-table"></i>
+            Anonymized Records for All Diagnoses
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                  <tr>
+                    <th>Diagnosis</th>
+                    <th>Sex</th>
+                    <th>Age</th>
+                    <th>Race</th>
+                    <th>Blood-Type</th>
+                    <th>Average Blood Pressure</th>
+                    <th>Average Height</th>
+                    <th>Average Weight</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if records %}
+                  {% for r in records %}
+                  <tr>
+                    <td>{{ r.0 }}</td>
+                    <td>{{ r.1 }}</td>
+                    <td>{{ r.2 }}</td>
+                    <td>{{ r.3 }}</td>
+                    <td>{{ r.4 }}</td>
+                    <td>{{ r.5 }}</td>
+                    <td>{{ r.6 }}</td>
+                    <td>{{ r.7 }}</td>
+                  </tr>
+                  {% endfor %}
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+{% endblock %}

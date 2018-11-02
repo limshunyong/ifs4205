@@ -33,5 +33,8 @@ urlpatterns = [
     url(r'^database/retrieve/patient$', views.get_patient_data),
     url(r'^database/upload/patient$', views.upload_ext_patient),
 
+    # Researcher Views
+    url(r'^researcher/index/$', views.researcher_index_view, name='researcher_index'),
+
     url(r'^keygen/', views.keygen_view),
 ]

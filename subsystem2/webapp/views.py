@@ -43,6 +43,12 @@ from .object import put_object, get_object, download_object
 from django.contrib import messages
 from minio.error import ResponseError
 
+from basic_mondrian.anonymize import Anonymizer
+from basic_mondrian.tree import Tree
+
+from dateutil.relativedelta import relativedelta
+from datetime import datetime
+from statistics import mean
 
 TOKEN = os.environ.get('SEC_TOKEN')
 
@@ -176,7 +182,8 @@ def verify_ble_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-                # TODO redirect researcher
+                elif request.user.userprofile.role == UserProfile.ROLE_RESEARCHER:
+                    return redirect(reverse('researcher_index'))
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
                 return redirect(reverse('select_otp'))
@@ -204,7 +211,8 @@ def verify_static_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-                # TODO redirect researcher
+                elif request.user.userprofile.role == UserProfile.ROLE_RESEARCHER:
+                    return redirect(reverse('researcher_index'))
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
                 return redirect(reverse('select_static_otp'))
@@ -520,7 +528,7 @@ def therapist_upload_data(request):
                     return render(request, 'therapist_upload.html', context)
 
             # No files for Document / Height / Weight / Blood Pressure
-            else: 
+            else:
                 minio_filename = None
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
@@ -622,7 +630,7 @@ def patient_upload_data(request):
 
                 try:
                     put_object(minio_filename, file.file, file.size)
-                    
+
                 except ResponseError as err:
                     print(err)
                     messages.error(request, 'ResponseError: file upload failed')
@@ -968,5 +976,67 @@ def upload_ext_patient(request):
     else:
         return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
 
+
+ANONYMIZER = Anonymizer()
+sex_tree = {}
+race_tree = {}
+bloodtype_tree = {}
+for i in Patient.SEX:
+    sex_tree[i] = []
+for i in Patient.RACES:
+    race_tree[i] = []
+for i in Patient.BLOOD_TYPES:
+    bloodtype_tree[i] = []
+ANONYMIZER.add_tree(Tree.struct_to_tree(sex_tree))
+ANONYMIZER.add_numrange(4, 120, 1)
+ANONYMIZER.add_tree(Tree.struct_to_tree(race_tree))
+ANONYMIZER.add_tree(Tree.struct_to_tree(bloodtype_tree))
+
+
+def get_diag_rows():
+    # For each diagnosis, get psuedo-identifiable data about the patient
+    diagnoses = HealthData.objects.filter(data_type=HealthData.DIAGNOSIS_DATA)
+    rows = []
+    for i in diagnoses:
+        current_patient = i.patient
+        sex = current_patient.sex
+        age = relativedelta(datetime.now(), current_patient.date_of_birth).years
+        race = current_patient.race
+        bloodtype = current_patient.bloodtype
+
+        bloodpressure = HealthData.objects.filter(data_type=HealthData.BLOOD_PRESSURE,
+                patient=current_patient).first().description
+        heights = HealthData.objects.filter(data_type=HealthData.HEIGHT, patient=current_patient)
+        weights = HealthData.objects.filter(data_type=HealthData.WEIGHT, patient=current_patient)
+
+        try:
+            avg_height = str(int(mean(float(i.description) for i in heights)))
+            avg_weight = str(int(mean(float(i.description) for i in weights)))
+        except:
+            continue
+
+        diagnosis = i.description
+
+        current_row = [sex, age, race, bloodtype, bloodpressure, avg_height, avg_weight, diagnosis]
+        rows.append(current_row)
+    return rows
+
+def get_anon_rows():
+    rows = get_diag_rows()
+    results = ANONYMIZER.process(rows, k=20, qi_num=4)
+    return results
+
+@otp_required
+@user_passes_test(is_researcher)
+def researcher_index_view(request):
+    researcher = request.user.userprofile.researcher
+    #anon_rows = get_anon_rows()
+    anon_rows = get_diag_rows()
+
+    context = {
+        'researcher_profile': researcher,
+        'records': anon_rows
+    }
+    return render(request, 'researcher_index.html', context)
 
 
