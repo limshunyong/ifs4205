@@ -1,5 +1,6 @@
 import json
 import csv
+import io
 import codecs
 import io
 import time
@@ -12,6 +13,7 @@ from datetime import datetime
 import pytz
 import ed25519
 import magic
+import requests
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -893,3 +895,78 @@ def get_patient_data(request):
             return HttpResponseForbidden("Invalid Token")
     else:
         return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+@csrf_exempt
+def upload_ext_patient(request):
+
+    if request.method == 'POST':
+        if request.POST['stoken'] != TOKEN:
+            return HttpResponseForbidden("Invalid Token")
+
+        name = request.FILES['file'].name
+        response = ""
+        ufile = request.FILES['file'].read().decode('utf-8-sig').splitlines()
+
+        if name == "Patients.csv":
+
+            for i in range(1,len(ufile)):
+                row = ufile[i].split(",")
+                patient_exist = Patient.objects.filter(nric=row[5]).exists()
+                if not patient_exist:
+                    #add into database
+                    p = Patient(name=row[1], nric=row[5], sex=row[2], address=row[4]+row[7], contact_number=row[9],
+                                date_of_birth=datetime.today())
+
+                    p.save()
+                else:
+                    response += "Patient with NRIC " + row[5] + \
+                                " is not added into the database as the record is already exist. \n"
+
+        elif name == "Patient Data.csv":
+
+            for i in range(1, len(ufile)):
+                row = ufile[i].split(",")
+
+                try:
+                    # get patient id
+                    patient_id = Patient.objects.get(nric=row[0]).id
+
+                    url = row[2]
+                    dfile = requests.get(url)
+
+                    b = io.BytesIO(dfile.content)
+                    length = len(dfile.content)
+
+                    # upload the downloaded file into minio
+                    _, file_extension = os.path.splitext(row[1])
+                    if file_extension:
+                        file_extension = file_extension.lower()
+
+                    minio_filename = '%s_%s%s' % (row[0], time.time(), file_extension)
+
+                    try:
+                         put_object(minio_filename, b, length)
+                    except ResponseError as err:
+                         print(err)
+                         messages.error(request, 'ResponseError: file upload failed')
+
+                    #insert into healthdata
+                    d = HealthData(title="External Database Record", description=row[3],
+                                   date=datetime.today(), patient_id=patient_id, data_type=4, minio_filename=minio_filename)
+                    d.save()
+
+                except Exception as e:
+
+                    response += "Error uploading data for patient with NRIC " + row[0] + ". \n"
+
+        if response == "":
+            return HttpResponse("OK")
+        else:
+            return HttpResponse(response)
+
+    else:
+        return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+
