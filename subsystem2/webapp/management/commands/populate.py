@@ -108,9 +108,9 @@ def populate():
         create_random_therapist()
     therapists = list(Therapist.objects.all())
 
-    # Create 100 random patients, assigning them to random therapists.
+    # Create 400 random patients, assigning them to random therapists.
     tp_pairs = []
-    for i in range(100):
+    for i in range(400):
         current_patient = create_random_patient()
         assigned_therapist = random.choice(therapists)
         assigned_patient = current_patient.userprofile.patient

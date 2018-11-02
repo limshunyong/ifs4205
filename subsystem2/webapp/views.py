@@ -982,13 +982,13 @@ sex_tree = {}
 race_tree = {}
 bloodtype_tree = {}
 for i in Patient.SEX:
-    sex_tree[i] = []
+    sex_tree[i[0]] = []
 for i in Patient.RACES:
-    race_tree[i] = []
+    race_tree[i[0]] = []
 for i in Patient.BLOOD_TYPES:
-    bloodtype_tree[i] = []
+    bloodtype_tree[i[0]] = []
 ANONYMIZER.add_tree(Tree.struct_to_tree(sex_tree))
-ANONYMIZER.add_numrange(4, 120, 1)
+ANONYMIZER.add_numrange(0, 120, 1)
 ANONYMIZER.add_tree(Tree.struct_to_tree(race_tree))
 ANONYMIZER.add_tree(Tree.struct_to_tree(bloodtype_tree))
 
@@ -1000,7 +1000,7 @@ def get_diag_rows():
     for i in diagnoses:
         current_patient = i.patient
         sex = current_patient.sex
-        age = relativedelta(datetime.now(), current_patient.date_of_birth).years
+        age = str(relativedelta(datetime.now(), current_patient.date_of_birth).years)
         race = current_patient.race
         bloodtype = current_patient.bloodtype
 
@@ -1023,15 +1023,14 @@ def get_diag_rows():
 
 def get_anon_rows():
     rows = get_diag_rows()
-    results = ANONYMIZER.process(rows, k=20, qi_num=4)
+    results, _ = ANONYMIZER.process(rows, k=2, qi_num=4)
     return results
 
 @otp_required
 @user_passes_test(is_researcher)
 def researcher_index_view(request):
     researcher = request.user.userprofile.researcher
-    #anon_rows = get_anon_rows()
-    anon_rows = get_diag_rows()
+    anon_rows = get_anon_rows()
 
     context = {
         'researcher_profile': researcher,
