@@ -752,7 +752,7 @@ def upload_ext_patient(request):
                     response += "Patient with NRIC " + row[5] + \
                                 " is not added into the database as the record is already exist. \n"
 
-        else:
+        elif name == "Patient Data.csv":
 
             for i in range(1, len(ufile)):
                 row = ufile[i].split(",")
@@ -766,7 +766,6 @@ def upload_ext_patient(request):
 
                     b = io.BytesIO(dfile.content)
                     length = len(dfile.content)
-
 
                     # upload the downloaded file into minio
                     _, file_extension = os.path.splitext(row[1])
@@ -783,11 +782,12 @@ def upload_ext_patient(request):
 
                     #insert into healthdata
                     d = HealthData(title="External Database Record", description=row[3],
-                                   date=row[4], patient_id=patient_id, data_type=4, minio_filename=minio_filename)
+                                   date=datetime.today(), patient_id=patient_id, data_type=4, minio_filename=minio_filename)
                     d.save()
 
                 except Exception as e:
-                    print(e)
+
+                    response += "Error uploading data for patient with NRIC " + row[0] + ". \n"
 
         if response == "":
             return HttpResponse("OK")
