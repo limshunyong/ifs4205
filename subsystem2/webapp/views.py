@@ -1,13 +1,19 @@
 import json
 import csv
+import io
 import codecs
+import io
 import time
 import urllib.parse
+import random
+import re
 import os.path
+from itertools import zip_longest
 from datetime import datetime
 import pytz
 import ed25519
 import magic
+import requests
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -31,10 +37,9 @@ from django.conf import settings
 
 
 from .models import Patient, Therapist, IsAPatientOf, Researcher, Ward, VisitRecord, HealthData, \
-    HealthDataPermission, UserProfile, DATA_TYPES, IMAGE_DATA, TIME_SERIES_DATA, \
-    MOVIE_DATA, DOCUMENT_DATA, BLEOTPDevice
+    HealthDataPermission, UserProfile, BLEOTPDevice
 from .forms import PermissionForm, UploadDataForm, UploadPatientDataForm
-from .object import put_object, get_object
+from .object import put_object, get_object, download_object
 from django.contrib import messages
 from minio.error import ResponseError
 
@@ -42,15 +47,15 @@ from minio.error import ResponseError
 TOKEN = os.environ.get('SEC_TOKEN')
 
 MAPPING = {
-    'image/jpg': IMAGE_DATA,
-    'image/jpeg': IMAGE_DATA,
-    'image/png': IMAGE_DATA,
-    'video/mp4': MOVIE_DATA,
-    'video/mpg': MOVIE_DATA,
-    'application/msword': DOCUMENT_DATA,
-    'text/plain': DOCUMENT_DATA
+    'image/jpg': HealthData.IMAGE_DATA,
+    'image/jpeg': HealthData.IMAGE_DATA,
+    'image/png': HealthData.IMAGE_DATA,
+    'video/mp4': HealthData.MOVIE_DATA,
+    'video/mpg': HealthData.MOVIE_DATA,
+    'application/msword': HealthData.DOCUMENT_DATA,
+    'text/plain': HealthData.DOCUMENT_DATA
 }
-  
+
 FILE_TYPES = {
     "Image": [
         { "mime": "image/jpeg", "ext": ".jpg" },
@@ -68,6 +73,22 @@ FILE_TYPES = {
     ]
 }
 
+MAX_IMAGE_SIZE = 10
+MAX_TIME_SERIES_SIZE = 0.1
+MAX_MOVIE_SIZE = 100
+MAX_DOCUMENT_SIZE = 10
+
+MAPSIZE = {
+    HealthData.IMAGE_DATA: MAX_IMAGE_SIZE,
+    HealthData.TIME_SERIES_DATA: MAX_TIME_SERIES_SIZE,
+    HealthData.MOVIE_DATA: MAX_MOVIE_SIZE,
+    HealthData.DOCUMENT_DATA: MAX_DOCUMENT_SIZE
+}
+
+# Validation for Time Series Data
+MAX_ALLOWED_CSV_LINES = 100
+MAX_ALLOWED_CSV_COLUMNS = 11
+
 
 # user_passes_test helper functions
 def is_therapist(user):
@@ -84,6 +105,12 @@ def is_patient(user):
     except:
         return False
 
+# user_passes_test helper functions
+def is_researcher(user):
+    try:
+        return user.userprofile.role == UserProfile.ROLE_RESEARCHER
+    except:
+        return False
 
 def login_view(request, next=None):
     next_url = request.GET.get('next')
@@ -115,12 +142,51 @@ def otp_view(request, next=None):
         return redirect(reverse('login'))
 
     context = {
-        'devices': otp.devices_for_user(request.user)
+        'devices': [x for x in otp.devices_for_user(request.user) if isinstance(x, BLEOTPDevice)]
     }
     return render(request, "otp.html", context)
 
 
-def verify_otp(request):
+def otp_static_view(request, next=None):
+    next_url = request.GET.get('next')
+    print(request.user, request.user.is_authenticated, request.user.is_verified())
+    if not request.user.is_authenticated:
+        return redirect(reverse('login'))
+
+    context = {
+        'devices': [x for x in otp.devices_for_user(request.user) if isinstance(x, StaticDevice)]
+    }
+    return render(request, "otp_static.html", context)
+
+
+def verify_ble_otp(request):
+    if not request.user.is_authenticated:
+        return redirect(reverse('login'))
+
+    if request.method == 'POST':
+        token = request.POST['otp_token']
+        device_id = request.POST['otp_device']
+        device = otp.models.Device.from_persistent_id(device_id)
+        print(str(type(device)), isinstance(device, otp.plugins.otp_static.models.StaticDevice))
+        if token and device:
+            if isinstance(device, BLEOTPDevice) and device.verify_token(token):
+                print("========ble ok")
+                otp.login(request, device)
+                if request.user.userprofile.role == UserProfile.ROLE_PATIENT:
+                    return redirect(reverse('patient_index'))
+                elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
+                    return redirect(reverse('therapist_index'))
+                # TODO redirect researcher
+            else:
+                messages.add_message(request, messages.ERROR, "Invalid token.")
+                return redirect(reverse('select_otp'))
+        else:
+            messages.add_message(request, messages.ERROR, "token or device_id not set.")
+            return redirect(reverse('select_otp'))
+    return redirect(reverse('select_otp'))
+
+
+def verify_static_otp(request):
     if not request.user.is_authenticated:
         return redirect(reverse('login'))
 
@@ -138,21 +204,18 @@ def verify_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-            elif isinstance(device, BLEOTPDevice) and device.verify_token(token):
-                print("========ble ok")
-                otp.login(request, device)
-                # TODO redirect by account type
-                return redirect(reverse('patient_index'))
+                # TODO redirect researcher
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
-                return redirect(reverse('select_otp'))
+                return redirect(reverse('select_static_otp'))
         else:
             messages.add_message(request, messages.ERROR, "token or device_id not set.")
-            return redirect(reverse('select_otp'))
-    return redirect(reverse('select_otp'))
+            return redirect(reverse('select_static_otp'))
+    return redirect(reverse('select_static_otp'))
 
 
-def challenge_view(request):
+
+def otp_ble_view(request):
     device_id = request.POST['device_id']
     device = otp.models.Device.from_persistent_id(device_id)
     error_msg = None
@@ -167,22 +230,22 @@ def challenge_view(request):
     device.save()
 
     # TODO remove test code below
-    signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
-    print('verifying_key', device.key)
-    print('signing_key', signing_key_str)
-    verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
-    signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
-    sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
-    print('challenge', msg_to_be_signed)
-    print('signature', sig)
-    verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
+    # signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
+    # print('verifying_key', device.key)
+    # print('signing_key', signing_key_str)
+    # verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
+    # signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
+    # sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
+    # print('challenge', msg_to_be_signed)
+    # print('signature', sig)
+    # verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
 
     context = {
         'error_msg': error_msg,
         'challenge': msg_to_be_signed,
         'device_id': request.POST['device_id']
     }
-    return render(request, 'challenge.html', context)
+    return render(request, 'otp_ble.html', context)
 
 
 def logout_view(request):
@@ -274,7 +337,7 @@ def therapist_list_patient_record_view(request, patient_id=None, type=None):
 
 @otp_required
 def patient_record_view(request, record_id):
-    print(record_id)
+    # print(record_id)
 
     context = {
         'user': request.user,
@@ -305,30 +368,58 @@ def patient_record_view(request, record_id):
         # for sidebar
         context['therapist_patients'] = Patient.objects.filter(isapatientof__therapist=therapist)
 
-    print(health_data.data_type)
-    print(health_data.minio_filename)
-    obj_link = get_object(health_data.minio_filename, 10)
-    print(obj_link)
+    print("data type: ", health_data.data_type)
+
+    if health_data.minio_filename:
+        obj_link = get_object(health_data.minio_filename, 10)
+        print("obj link:" , obj_link)
 
     context['description'] = health_data.description
-    if health_data.data_type == IMAGE_DATA:
+    if health_data.data_type == HealthData.IMAGE_DATA:
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_image.html', context)
-    elif health_data.data_type == MOVIE_DATA:
+    elif health_data.data_type == HealthData.MOVIE_DATA:
         context['obj_link'] = resolve_minio_link(obj_link)
         return render(request, 'patient_record_movie.html', context)
-    elif health_data.data_type == TIME_SERIES_DATA:
-        return HttpResponse('To implement.')
-    elif health_data.data_type == DOCUMENT_DATA:
-        return HttpResponse('To implement.')
+    elif health_data.data_type == HealthData.TIME_SERIES_DATA:
+        obj_contents_stream = download_object(health_data.minio_filename)
+
+        obj_contents = ""
+        for data in obj_contents_stream.stream(32*1024):
+            obj_contents += data.decode()
+
+        transposed_csv_contents = zip_longest(*csv.reader(obj_contents.splitlines(), delimiter=','))
+
+        chart_lines = []
+        for idx, row in enumerate(transposed_csv_contents):
+            if idx == 0:
+                chart_labels = list(row)
+            else:
+                r, g, b = (random.randint(0,255), random.randint(0, 255), random.randint(0, 255))
+                chart_lines.append({
+                    "label": "Column %s" % idx,
+                    "backgroundColor": "rgb(%s,%s,%s)" % (r, g, b),
+                    "borderColor": "rgb(%s,%s,%s)" % (r, g, b),
+                    "data": list(row),
+                    "fill": False
+                })
+
+        chart_data = {
+                          "labels": chart_labels,
+                          "datasets": chart_lines
+                      }
+        context['chart_data'] = json.dumps(chart_data)
+        return render(request, 'patient_record_bp.html', context)
+    elif health_data.data_type == HealthData.DOCUMENT_DATA or health_data.data_type == HealthData.HEIGHT or health_data.data_type == HealthData.WEIGHT or health_data.data_type == HealthData.DIAGNOSIS_DATA or health_data.data_type==HealthData.BLOOD_PRESSURE:
+        return render(request, 'patient_record_document.html', context)
     else:
         return HttpResponseForbidden()
 
 
 def resolve_minio_link(link):
-    MINIO_URL = getattr(settings, "MINIO_URL", None)
-    return link.replace("http://minio:9000/", MINIO_URL)
-    
+    MINIO_EXTERNAL_URL = getattr(settings, "MINIO_EXTERNAL_URL", None)
+    return link.replace("http://minio:9000/", MINIO_EXTERNAL_URL)
+
 
 @otp_required
 @user_passes_test(is_therapist)
@@ -347,53 +438,95 @@ def therapist_upload_data(request):
 
         if form.is_valid():
             file = form.cleaned_data['file']
-            _, file_extension = os.path.splitext(file.name)
-            if file_extension:
-                file_extension = file_extension.lower()
+            patient_id = form.cleaned_data['patient'].id
             data_type = form.cleaned_data['data_type']
 
-            mime = magic.from_buffer(file.read(), mime=True).lower()
-            file.seek(0)
+            if file:
+                _, file_extension = os.path.splitext(file.name)
+                if file_extension:
+                    file_extension = file_extension.lower()
 
-            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
+                mime = magic.from_buffer(file.read(), mime=True).lower()
+                file.seek(0)
 
-            wrong_type = True
-            for allowed_types in FILE_TYPES.get(data_type_name):
-                if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
-                    wrong_type = False
-                    break
+                data_type_name = [x for x in HealthData.DATA_TYPES if int(data_type) in x][0][1]
 
-            if wrong_type:
-                messages.error(request, 'Invalid file type. File type should be: '
-                                        'IMAGE: \'.jpg\', \'.png\' '
-                                        'TIME SERIES: \'.csv\' '
-                                        'VIDEO: \'.mp4\', \'.mpg\' '
-                                        'DOCUMENT: \'.doc\'')
+                wrong_type = True
+                for allowed_types in FILE_TYPES.get(data_type_name):
+                    if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
+                        wrong_type = False
+                        break
 
                 context = {
-                    'user': request.user,
-                    'upload_data_form': form
-                }
+                            'user': request.user,
+                            'upload_data_form': form
+                        }
 
-                return render(request, 'therapist_upload.html', context)
+                if wrong_type:
+                    messages.error(request, 'Invalid file type. File type should be: '
+                                            'IMAGE: \'.jpg\', \'.png\' '
+                                            'TIME SERIES: \'.csv\' '
+                                            'VIDEO: \'.mp4\', \'.mpg\' '
+                                            'DOCUMENT: \'.doc\'')
+                    return render(request, 'therapist_upload.html', context)
 
-            patient_id = form.cleaned_data['patient'].id
-            minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
-            try:
-                put_object(minio_filename, file.file, file.size)
-            except ResponseError as err:
-                print(err)
-                messages.error(request, 'ResponseError: file upload failed')
-                return render(request, 'therapist_upload.html')
-            except MaxRetryError as err:
-                print(err)
-                messages.error(request, 'MaxRetryError: file upload failed')
-                return render(request, 'therapist_upload.html')
+
+                size = MAPSIZE[int(data_type)]
+                max_size = size*1024*1024
+
+                if file.size > max_size:
+                    messages.error(request, 'The maximum file size that can be uploaded is ' + str(size) + ' MB')
+
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': form
+                    }
+
+                    return render(request, 'therapist_upload.html', context)
+
+                if int(data_type) == HealthData.TIME_SERIES_DATA:
+                    # Validation for Time Series Data
+                    for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
+                        if idx >= MAX_ALLOWED_CSV_LINES:
+                            messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
+                            return render(request, 'therapist_upload.html', context)
+                        for idx, col in enumerate(row):
+                            if idx >= MAX_ALLOWED_CSV_COLUMNS:
+                                messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+                                return render(request, 'therapist_upload.html', context)
+                            if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
+                                messages.error(request, "Invalid characters in CSV file, only numbers allowed")
+                                return render(request, 'therapist_upload.html', context)
+                    file.seek(0)
+
+                minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+                try:
+                    put_object(minio_filename, file.file, file.size)
+                except ResponseError as err:
+                    print(err)
+                    messages.error(request, 'ResponseError: file upload failed')
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': form
+                    }
+                    return render(request, 'therapist_upload.html', context)
+                except MaxRetryError as err:
+                    print(err)
+                    messages.error(request, 'MaxRetryError: file upload failed')
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': form
+                    }
+                    return render(request, 'therapist_upload.html', context)
+
+            # No files for Document / Height / Weight / Blood Pressure
+            else: 
+                minio_filename = None
             patient_data = HealthData(
                 patient=Patient.objects.get(pk=patient_id),
                 therapist=therapist,
                 data_type=data_type,
-                title=file.name,
+                title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
                 description=form.cleaned_data['description'],
                 minio_filename=minio_filename
             )
@@ -425,61 +558,101 @@ def patient_upload_data(request):
 
         if form.is_valid():
             file = form.cleaned_data['file']
-            _, file_extension = os.path.splitext(file.name)
-            if file_extension:
-                file_extension = file_extension.lower()
-            data_type=form.cleaned_data['data_type']
+            patient_id = patient.id
+            data_type = form.cleaned_data['data_type']
 
-            mime = magic.from_buffer(file.read(), mime=True).lower()
-            file.seek(0)
-            data_type_name = [x for x in DATA_TYPES if int(data_type) in x][0][1]
+            if file:
+                _, file_extension = os.path.splitext(file.name)
+                if file_extension:
+                    file_extension = file_extension.lower()
 
-            wrong_type = True
-            for allowed_types in FILE_TYPES.get(data_type_name):
-                if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
-                    wrong_type = False
-                    break
+                mime = magic.from_buffer(file.read(), mime=True).lower()
+                file.seek(0)
+                data_type_name = [x for x in HealthData.DATA_TYPES if int(data_type) in x][0][1]
 
-            if wrong_type:
-                messages.error(request, 'Invalid file type. File type should be: '
-                                        'IMAGE: \'.jpg\', \'.png\' '
-                                        'TIME SERIES: \'.csv\' '
-                                        'VIDEO: \'.mp4\', \'.mpg\' '
-                                        'DOCUMENT: \'.doc\'')
+                wrong_type = True
+                for allowed_types in FILE_TYPES.get(data_type_name):
+                    if file_extension == allowed_types.get('ext') and mime == allowed_types.get('mime'):
+                        wrong_type = False
+                        break
 
                 context = {
-                    'user': request.user,
-                    'upload_data_form': UploadPatientDataForm()
-                }
+                        'user': request.user,
+                        'upload_data_form': UploadPatientDataForm()
+                    }
 
-                return render(request, 'patient_upload.html', context)
+                if wrong_type:
+                    messages.error(request, 'Invalid file type. File type should be: '
+                                            'IMAGE: \'.jpg\', \'.png\' '
+                                            'TIME SERIES: \'.csv\' '
+                                            'VIDEO: \'.mp4\', \'.mpg\' '
+                                            'DOCUMENT: \'.doc\'')
+                    return render(request, 'patient_upload.html', context)
 
-            patient_id = patient.id
-            minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
 
-            try:
-                put_object(minio_filename, file.file, file.size)
-                patient_data = HealthData(
-                    patient=Patient.objects.get(pk=patient_id),
-                    data_type=data_type,
-                    title=file.name,
-                    description='',
-                    minio_filename=minio_filename
-                )
-                patient_data.save()
-                messages.success(request, 'File upload successful')
-            except ResponseError as err:
-                print(err)
-                messages.error(request, 'ResponseError: file upload failed')
-                return render(request, 'patient_upload.html')
-            except MaxRetryError as err:
-                print(err)
-                messages.error(request, 'MaxRetryError: file upload failed')
-                return render(request, 'patient_upload.html')
+                size = MAPSIZE[int(data_type)]
+                max_size = size*1024*1024
+
+                if file.size > max_size:
+                    messages.error(request, 'The maximum file size that can be uploaded is ' + str(size) + ' MB')
+
+                    context = {
+                        'user': request.user,
+                        'upload_data_form': UploadPatientDataForm()
+                    }
+
+                    return render(request, 'patient_upload.html', context)
+
+                 # Validation for Time Series Data
+                if int(data_type) == HealthData.TIME_SERIES_DATA:
+                    for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
+                        if idx >= MAX_ALLOWED_CSV_LINES:
+                            messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
+                            return render(request, 'patient_upload.html', context)
+                        for idx, col in enumerate(row):
+                            if idx >= MAX_ALLOWED_CSV_COLUMNS:
+                                messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+                                return render(request, 'patient_upload.html', context)
+                            if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
+                                messages.error(request, "Invalid characters in CSV file, only numbers allowed")
+                                return render(request, 'patient_upload.html', context)
+                    file.seek(0)
+
+                minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
+
+                try:
+                    put_object(minio_filename, file.file, file.size)
+                    
+                except ResponseError as err:
+                    print(err)
+                    messages.error(request, 'ResponseError: file upload failed')
+                except MaxRetryError as err:
+                    print(err)
+                    messages.error(request, 'MaxRetryError: file upload failed')
+
+            # No file for Document / Diagnosis / Height / Weight
+            else:
+                minio_filename = None
+            patient_data = HealthData(
+                        patient=Patient.objects.get(pk=patient_id),
+                        data_type=data_type,
+                        title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
+                        description=form.cleaned_data['description'],
+                        minio_filename=minio_filename
+                    )
+            patient_data.save()
+            messages.success(request, 'File upload successful')
 
             context = {
                 'user': request.user,
                 'upload_data_form': UploadPatientDataForm()
+            }
+            return render(request, 'patient_upload.html', context)
+
+        else:
+            context = {
+                'user': request.user,
+                'upload_data_form': form
             }
             return render(request, 'patient_upload.html', context)
 
@@ -722,3 +895,78 @@ def get_patient_data(request):
             return HttpResponseForbidden("Invalid Token")
     else:
         return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+@csrf_exempt
+def upload_ext_patient(request):
+
+    if request.method == 'POST':
+        if request.POST['stoken'] != TOKEN:
+            return HttpResponseForbidden("Invalid Token")
+
+        name = request.FILES['file'].name
+        response = ""
+        ufile = request.FILES['file'].read().decode('utf-8-sig').splitlines()
+
+        if name == "Patients.csv":
+
+            for i in range(1,len(ufile)):
+                row = ufile[i].split(",")
+                patient_exist = Patient.objects.filter(nric=row[5]).exists()
+                if not patient_exist:
+                    #add into database
+                    p = Patient(name=row[1], nric=row[5], sex=row[2], address=row[4]+row[7], contact_number=row[9],
+                                date_of_birth=datetime.today())
+
+                    p.save()
+                else:
+                    response += "Patient with NRIC " + row[5] + \
+                                " is not added into the database as the record is already exist. \n"
+
+        elif name == "Patient Data.csv":
+
+            for i in range(1, len(ufile)):
+                row = ufile[i].split(",")
+
+                try:
+                    # get patient id
+                    patient_id = Patient.objects.get(nric=row[0]).id
+
+                    url = row[2]
+                    dfile = requests.get(url)
+
+                    b = io.BytesIO(dfile.content)
+                    length = len(dfile.content)
+
+                    # upload the downloaded file into minio
+                    _, file_extension = os.path.splitext(row[1])
+                    if file_extension:
+                        file_extension = file_extension.lower()
+
+                    minio_filename = '%s_%s%s' % (row[0], time.time(), file_extension)
+
+                    try:
+                         put_object(minio_filename, b, length)
+                    except ResponseError as err:
+                         print(err)
+                         messages.error(request, 'ResponseError: file upload failed')
+
+                    #insert into healthdata
+                    d = HealthData(title="External Database Record", description=row[3],
+                                   date=datetime.today(), patient_id=patient_id, data_type=4, minio_filename=minio_filename)
+                    d.save()
+
+                except Exception as e:
+
+                    response += "Error uploading data for patient with NRIC " + row[0] + ". \n"
+
+        if response == "":
+            return HttpResponse("OK")
+        else:
+            return HttpResponse(response)
+
+    else:
+        return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+

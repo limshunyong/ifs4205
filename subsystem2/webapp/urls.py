@@ -4,8 +4,10 @@ from . import views
 urlpatterns = [
     url(r'^account/login/$', views.login_view, name='login'),
     url(r'^account/otp/$', views.otp_view, name='select_otp'),
-    url(r'^account/otp/verify/$', views.verify_otp),
-    url(r'^account/otp/challenge/$', views.challenge_view),
+	url(r'^account/otp/ble/$', views.otp_ble_view, name='select_ble_otp'),
+	url(r'^account/otp/ble/verify/$', views.verify_ble_otp),
+	url(r'^account/otp/static/$', views.otp_static_view,name='select_static_otp'),
+    url(r'^account/otp/static/verify/$', views.verify_static_otp),
     url(r'^account/logout/$', views.logout_view),
 
     # Patient Views
@@ -29,6 +31,7 @@ urlpatterns = [
 
     # Subsystem 4
     url(r'^database/retrieve/patient$', views.get_patient_data),
+    url(r'^database/upload/patient$', views.upload_ext_patient),
 
     url(r'^keygen/', views.keygen_view),
 ]

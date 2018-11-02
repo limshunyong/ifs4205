@@ -13,18 +13,6 @@ from django_otp.plugins.otp_static.models import StaticDevice
 from auditlog.registry import auditlog
 from ckeditor.fields import RichTextField
 
-IMAGE_DATA = 0
-TIME_SERIES_DATA = 1
-MOVIE_DATA = 2
-DOCUMENT_DATA = 3
-DATA_TYPES = (
-    (IMAGE_DATA, 'Image'),
-    (TIME_SERIES_DATA, 'Time Series'),
-    (MOVIE_DATA, 'Movie'),
-    (DOCUMENT_DATA, 'Document')
-)
-
-
 def no_future_date(value):
     today = date.today()
     if value > today:
@@ -165,12 +153,32 @@ class VisitRecord(models.Model):
 
 
 class HealthData(models.Model):
+    IMAGE_DATA = 0
+    TIME_SERIES_DATA = 1
+    MOVIE_DATA = 2
+    DOCUMENT_DATA = 3
+    DIAGNOSIS_DATA = 4
+    BLOOD_PRESSURE = 5
+    HEIGHT = 6
+    WEIGHT = 7
+
+    DATA_TYPES = (
+        (IMAGE_DATA, 'Image'),
+        (TIME_SERIES_DATA, 'Time Series'),
+        (MOVIE_DATA, 'Movie'),
+        (DOCUMENT_DATA, 'Document'),
+        (DIAGNOSIS_DATA, 'Diagnosis'),
+        (BLOOD_PRESSURE, 'Blood Pressure Reading'),
+        (HEIGHT, 'Height Reading'),
+        (WEIGHT, 'Weight Reading'),
+    )
+
     id = models.AutoField(primary_key=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, blank=True, null=True)
     data_type = models.IntegerField(choices=DATA_TYPES, blank=False, default=0)
     title = models.CharField(max_length=100, blank=False)
-    minio_filename = models.CharField(max_length=100, blank=False)
+    minio_filename = models.CharField(max_length=100, blank=False, null=True)
     description = RichTextField()
     date = models.DateTimeField('created on', auto_now_add=True)
 
@@ -178,12 +186,12 @@ class HealthData(models.Model):
         if self.therapist:
             return '%s %s, patient: [%d] %s, therapist: [%d] %s' % (
                 self.title,
-                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                [item[1] for item in self.DATA_TYPES if item[0] == self.data_type],
                 self.patient.id, self.patient.name, self.therapist.id, self.therapist.name)
         else:
             return '%s %s, patient: [%d] %s' % (
                 self.title,
-                [item[1] for item in DATA_TYPES if item[0] == self.data_type],
+                [item[1] for item in self.DATA_TYPES if item[0] == self.data_type],
                 self.patient.id, self.patient.name)
 
 
