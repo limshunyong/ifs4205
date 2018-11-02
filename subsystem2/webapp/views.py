@@ -1,5 +1,6 @@
 import json
 import csv
+import io
 import codecs
 import time
 import urllib.parse
@@ -8,6 +9,7 @@ from datetime import datetime
 import pytz
 import ed25519
 import magic
+import requests
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -750,26 +752,42 @@ def upload_ext_patient(request):
                     response += "Patient with NRIC " + row[5] + \
                                 " is not added into the database as the record is already exist. \n"
 
-        elif name == "Patients Records.csv":
+        else:
 
             for i in range(1, len(ufile)):
                 row = ufile[i].split(",")
 
-                title = "External Database Record"
-                description = "External Database Record"
-
                 try:
-                    #get patient id based on NRIC
-                    patient_id = Patient.objects.get(nric=row[1]).id
+                    # get patient id
+                    patient_id = Patient.objects.get(nric=row[0]).id
+
+                    url = row[2]
+                    dfile = requests.get(url)
+
+                    b = io.BytesIO(dfile.content)
+                    length = len(dfile.content)
+
+
+                    # upload the downloaded file into minio
+                    _, file_extension = os.path.splitext(row[1])
+                    if file_extension:
+                        file_extension = file_extension.lower()
+
+                    minio_filename = '%s_%s%s' % (row[0], time.time(), file_extension)
+
+                    try:
+                         put_object(minio_filename, b, length)
+                    except ResponseError as err:
+                         print(err)
+                         messages.error(request, 'ResponseError: file upload failed')
 
                     #insert into healthdata
-                    d = HealthData(title="External Database Record", description=row[2]+ " - " + row[3],
-                                   date=row[4], patient_id=patient_id, data_type=4, minio_filename=row[5])
+                    d = HealthData(title="External Database Record", description=row[3],
+                                   date=row[4], patient_id=patient_id, data_type=4, minio_filename=minio_filename)
                     d.save()
 
                 except Exception as e:
-                    response += "Data ID " + row[0] + " for NRIC " + row[1] + \
-                            " is not added into the database the user does not exist in our records. \n"
+                    print(e)
 
         if response == "":
             return HttpResponse("OK")
@@ -778,3 +796,6 @@ def upload_ext_patient(request):
 
     else:
         return HttpResponseForbidden("Invalid HTTP method, Please use HTTPS POST for request")
+
+
+
