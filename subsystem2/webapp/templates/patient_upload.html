@@ -3,28 +3,28 @@
 {% block content %}
 <div id="wrapper">
     {% include "sidebar.html" %}
-   <div id="content-wrapper">
+    <div id="content-wrapper">
         <div class="card mb-3">
-	        <div class="card-header">
-		        <i class="fas fa-table"></i>
-		        Patient Upload Health Data Portal
-	        </div>
-	        <div class="card-body">
-                {% if messages %}
-                <ul class="messages">
-                    {% for message in messages %}
-                        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-                <form action="/web/patient/upload/" method="post" id="upload-form" enctype="multipart/form-data">
-                    <div class="form-group">
-                        {{ upload_data_form }}
-                        {% csrf_token %}
-                        <button type="submit" form="upload-form" class="btn btn-primary btn-block">Upload</button>
-                    </div>
-                </form>
-	        </div>
+           <div class="card-header">
+              <i class="fas fa-table"></i>
+              Patient Upload Health Data Portal
+          </div>
+          <div class="card-body">
+            {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <form action="/web/patient/upload/" method="post" id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    {{ upload_data_form.media }}
+                    {{ upload_data_form.as_p }}
+                    {% csrf_token %}
+                    <button type="submit" form="upload-form" class="btn btn-primary btn-block">Upload</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

@@ -408,7 +408,7 @@ def patient_record_view(request, record_id):
                       }
         context['chart_data'] = json.dumps(chart_data)
         return render(request, 'patient_record_bp.html', context)
-    elif health_data.data_type == HealthData.DOCUMENT_DATA or health_data.data_type == HealthData.HEIGHT or health_data.data_type == HealthData.WEIGHT or health_data.data_type == HealthData.DIAGNOSIS_DATA:
+    elif health_data.data_type == HealthData.DOCUMENT_DATA or health_data.data_type == HealthData.HEIGHT or health_data.data_type == HealthData.WEIGHT or health_data.data_type == HealthData.DIAGNOSIS_DATA or health_data.data_type==HealthData.BLOOD_PRESSURE:
         return render(request, 'patient_record_document.html', context)
     else:
         return HttpResponseForbidden()
@@ -635,7 +635,7 @@ def patient_upload_data(request):
                         patient=Patient.objects.get(pk=patient_id),
                         data_type=data_type,
                         title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
-                        description='',
+                        description=form.cleaned_data['description'],
                         minio_filename=minio_filename
                     )
             patient_data.save()
