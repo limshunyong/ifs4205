@@ -174,7 +174,7 @@ def verify_ble_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-                # TODO redirect researcher 
+                # TODO redirect researcher
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
                 return redirect(reverse('select_otp'))
@@ -202,7 +202,7 @@ def verify_static_otp(request):
                     return redirect(reverse('patient_index'))
                 elif request.user.userprofile.role == UserProfile.ROLE_THERAPIST:
                     return redirect(reverse('therapist_index'))
-                # TODO redirect researcher 
+                # TODO redirect researcher
             else:
                 messages.add_message(request, messages.ERROR, "Invalid token.")
                 return redirect(reverse('select_static_otp'))
@@ -414,8 +414,8 @@ def patient_record_view(request, record_id):
 
 
 def resolve_minio_link(link):
-    MINIO_URL = getattr(settings, "MINIO_URL", None)
-    return link.replace("http://minio:9000/", MINIO_URL)
+    MINIO_EXTERNAL_URL = getattr(settings, "MINIO_EXTERNAL_URL", None)
+    return link.replace("http://minio:9000/", MINIO_EXTERNAL_URL)
 
 
 @otp_required

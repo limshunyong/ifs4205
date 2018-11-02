@@ -20,4 +20,4 @@ DATABASES = {
     }
 }
 
-MINIO_URL = "http://ifs4205-t2-2-i.comp.nus.edu.sg/"
+MINIO_EXTERNAL_URL = "http://ifs4205-t2-2-i.comp.nus.edu.sg/"
