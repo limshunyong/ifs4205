@@ -442,19 +442,20 @@ def therapist_upload_data(request):
 
                 return render(request, 'therapist_upload.html', context)
 
-            # Validation for Time Series Data
-            for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
-                if idx >= MAX_ALLOWED_CSV_LINES:
-                    messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
-                    return render(request, 'therapist_upload.html', context)
-                for idx, col in enumerate(row):
-                    if idx >= MAX_ALLOWED_CSV_COLUMNS:
-                        messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+            if int(data_type) == HealthData.TIME_SERIES_DATA:
+                # Validation for Time Series Data
+                for idx, row in enumerate(csv.reader(file.read().decode().splitlines(), delimiter=',')):
+                    if idx >= MAX_ALLOWED_CSV_LINES:
+                        messages.error(request, "Exceeded %s allowed lines in CSV" % MAX_ALLOWED_CSV_LINES)
                         return render(request, 'therapist_upload.html', context)
-                    if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
-                        messages.error(request, "Invalid characters in CSV file, only numbers allowed")
-                        return render(request, 'therapist_upload.html', context)
-            file.seek(0)
+                    for idx, col in enumerate(row):
+                        if idx >= MAX_ALLOWED_CSV_COLUMNS:
+                            messages.error(request, "Exceeded %s allowed columns in CSV" % MAX_ALLOWED_CSV_COLUMNS)
+                            return render(request, 'therapist_upload.html', context)
+                        if re.match("^-{0,1}((\d+)|(\d+\.\d+))$", col) == None:
+                            messages.error(request, "Invalid characters in CSV file, only numbers allowed")
+                            return render(request, 'therapist_upload.html', context)
+                file.seek(0)
 
             patient_id = form.cleaned_data['patient'].id
             minio_filename = '%s_%s%s' % (patient_id, time.time(), file_extension)
