@@ -43,12 +43,14 @@ def get_object(object_name, timeout):
     return minioClient.presigned_get_object(BUCKET_NAME, object_name, expires=timedelta(seconds=timeout))
 
 
-def download_object(bucket_name, object_name, path):
+def download_object(object_name):
     # Get a full object and prints the original object stat information.
-    try:
-        print(minioClient.fget_object(bucket_name, object_name, path))
-    except ResponseError as err:
-        print(err)
+    obj = minioClient.get_object(BUCKET_NAME, object_name)
+    return obj
+    # try:
+    #     print(minioClient.fget_object(bucket_name, object_name, path))
+    # except ResponseError as err:
+    #     print(err)
 
 
 def remove_object(bucket_name, object_name):

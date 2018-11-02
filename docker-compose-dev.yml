@@ -37,6 +37,7 @@ services:
       - minio
     env_file:
       - ./config/minio.env
+      - ./config/mysql.env
     environment:
       - DJANGO_SETTINGS_MODULE=subsystem2.settings.local
 

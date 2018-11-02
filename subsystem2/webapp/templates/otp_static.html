@@ -30,17 +30,14 @@
    </head>
    <body class="bg-dark">
       <div class="container">
-         <form action="/web/account/otp/ble/" method="POST" id="challenge-form">
-            <input type="hidden" name="device_id" id="device_id" value=""/>
-            {% csrf_token %}
-         </form>
              
-         <form action="/web/account/otp/verify/" method="POST" id="verify-form">
+         <form action="/web/account/otp/static/verify/" method="POST" id="verify-form">
             <div class="card card-login mx-auto mt-5">
-                <div class="card-header">Verify Your 2FA Token</div>
+                <div class="card-header">Emergency Access</div>
                 <div class="card-body">
+                    <a href="/web/account/otp/"><< Back</a>
                     {% if devices %}
-                        <p>Please choose your token device.</p>
+                        <p>Enter your one-time access token below.</p>
                         {% if messages %}
                             <ul class="messages">
                                 {% for message in messages %}
@@ -54,14 +51,15 @@
                                 <option value="{{d.persistent_id}}">{{d}}</option>
                                 {% endfor %}
                             </select>
-                            <button type="submit" form="challenge-form">Select</button>
+                        </div>
+                        <div>
+                            <input type="text" name="otp_token" id="otp" placeholder="Enter otp here" required="required"/>
+                            <button type="submit" form="verify-form">Verify</button>
                         </div>
                         {% csrf_token %}
                     {% else %}
-                        <p>You have not registered any token device. </p>
+                        <p>Kindly contact the administrator to obtain a one-time access token and refresh this page.</p>
                     {% endif %}
-                    <br>
-                    <a href="/web/account/otp/static/">>> Lost your device or need emergency access?</a>
                 </div>
             </div>
         </form>

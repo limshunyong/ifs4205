@@ -19,18 +19,24 @@
    </head>
    <body class="bg-dark">
       <div class="container">
-         <form action="/web/account/otp/verify/" method="post" id="challenge-form">
+         <form action="/web/account/otp/ble/verify/" method="post" id="challenge-form">
              <!-- TODO: HIDE THIS AND REMOVE SUBMIT BUTTON -->
-            <input type="text" name="otp_device" id="otp_device" value="{{ device_id }}"/>
-            <input type="text" name="otp_token" id="otp_token" placeholder="Enter signature" value=""/>
-			<button type="button" onclick="BLEtagInterface()" form="challenge-form">Verify tag</button>
+            <input type="hidden" name="otp_device" id="otp_device" value="{{ device_id }}"/>
+            <input type="hidden" name="otp_token" id="otp_token" placeholder="Enter signature" value=""/>
+			
             {% csrf_token %}
-            <button type="submit" form="challenge-form">Verify</button>
          </form>
          <div class="card card-login mx-auto mt-5">
+						{% if messages %}
+							<ul class="messages">
+									{% for message in messages %}
+											<li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+									{% endfor %}
+							</ul>
+						{% endif %}
             <div class="card-header">Verifying</div>
             <div class="card-body">
-				
+							<button type="button" onclick="BLEtagInterface()" form="challenge-form">Connect tag</button>
 				<script>
 				  var ChromeSamples = {
 					log: function() {
@@ -59,7 +65,6 @@
 				  };
 				</script>
 
-				<h3>Live Output</h3>
 				<div id="output" class="output">
 				  <div id="content"></div>
 				  <div id="status"></div>
@@ -77,11 +82,11 @@
 				  }
 				</script>
 				
-                <p>Sign this:</p>
+                <!-- <p>Sign this:</p>
                 {% if error_msg %} {{ error_msg }} {% endif %}
                 {{ challenge }}
                 <br/>
-                <b>TODO: Send challenge to tag through BLE -> sign by token -> POST challenge-form</b>
+                <b>TODO: Send challenge to tag through BLE -> sign by token -> POST challenge-form</b> -->
             </div>
         </div>
         </form>
