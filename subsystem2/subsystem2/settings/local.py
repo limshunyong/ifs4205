@@ -18,8 +18,6 @@ DB_USER = os.getenv("MYSQL_USER", "admin")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD", "admin")
 DB_DATABASE = os.getenv("MYSQL_DATABASE", "subsystem2")
 
-print(DB_HOST)
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
