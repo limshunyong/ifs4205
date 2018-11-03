@@ -1022,8 +1022,20 @@ def get_diag_rows():
     return rows
 
 def get_anon_rows():
+    def retrieve_readable(choice, item):
+        for i,v in choice:
+            if item == i:
+                return v
+        return "*"
     rows = get_diag_rows()
     results, _ = ANONYMIZER.process(rows, k=2, qi_num=4)
+
+    for row in results:
+        row[0] = retrieve_readable(Patient.SEX, row[0])
+        row[1] = row[1].replace(",", "-")
+        row[2] = retrieve_readable(Patient.RACES, row[2])
+        row[3] = retrieve_readable(Patient.BLOOD_TYPES, row[3])
+
     return results
 
 @otp_required
