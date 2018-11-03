@@ -263,12 +263,18 @@ def logout_view(request):
 
 # TODO only admin can view
 def keygen_view(request):
+    split_hex = lambda x: [x[i:i+2] for i in range(0, len(x), 2)]
     private_key, public_key = ed25519.create_keypair()
     private_key_str = private_key.to_ascii(encoding="hex").decode('ascii')
     public_key_str = public_key.to_ascii(encoding="hex").decode('ascii')
+    print(public_key_str)
+    print(split_hex(public_key_str))
+    arr_uint8 = [int(x, 16) for x in split_hex(public_key_str)]
+    print(arr_uint8)
+    public_key_arr = '{' + ','.join([str(x) for x in arr_uint8]) + '}'
     context = {
         'public_key': public_key_str,
-        'private_key': private_key_str
+        'private_key': public_key_arr
     }
     return render(request, 'keygen.html', context)
 

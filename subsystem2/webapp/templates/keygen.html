@@ -1,7 +1,9 @@
 
 <div class="container">
     <h5>Key Generator</h5>
-    <p>Verifying key (copy to the 'Key' field): {{ public_key }}</p>
-    <p>Signing key (write to the tag): {{ private_key }}</p>
+    <p>Verifying key (copy to the 'Key' field):</p>
+    <p>{{ public_key }}</p>
+    <p>Signing key (write to the tag): </p>
+    <p>uint8_t tagPrivateKey[32] = {{ private_key }};</p>
 
 </div>
