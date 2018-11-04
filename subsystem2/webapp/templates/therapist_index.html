@@ -30,7 +30,15 @@
                   <tr>
                     <td>{{ r.date }}</td>
                     <td><a href="/web/patient/record/{{ r.id }}" target="_blank">{{ r.title }}</a></td>
-                    <td>{{ r.therapist.name }}</td>
+                    <td>{{ r.therapist.name }}
+                    {% comment %} {% if r.is_verified is None %}
+                      <ion-icon name="information"></ion-icon>
+                    {% elif r.is_verified is True %}
+                      <ion-icon name="checkmark"></ion-icon>
+                    {% elif r.is_verified is False %}
+                      <ion-icon name="close"></ion-icon>
+                    {% endif %} {% endcomment %}
+                    </td>
                     <td>{% for type in DATA_TYPES %}{% if forloop.counter0 == r.data_type %}{{type}}{% endif %}{% endfor %}</td>
                   </tr>
                   {% endfor %}
