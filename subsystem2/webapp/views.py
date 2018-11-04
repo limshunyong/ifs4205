@@ -1032,12 +1032,11 @@ def get_diag_rows():
         race = current_patient.race
         bloodtype = current_patient.bloodtype
 
-        bloodpressure = HealthData.objects.filter(data_type=HealthData.BLOOD_PRESSURE,
-                patient=current_patient).first().description
-        heights = HealthData.objects.filter(data_type=HealthData.HEIGHT, patient=current_patient)
-        weights = HealthData.objects.filter(data_type=HealthData.WEIGHT, patient=current_patient)
-
         try:
+            bloodpressure = HealthData.objects.filter(data_type=HealthData.BLOOD_PRESSURE,
+                    patient=current_patient).first().description
+            heights = HealthData.objects.filter(data_type=HealthData.HEIGHT, patient=current_patient)
+            weights = HealthData.objects.filter(data_type=HealthData.WEIGHT, patient=current_patient)
             avg_height = str(int(mean(float(i.description) for i in heights)))
             avg_weight = str(int(mean(float(i.description) for i in weights)))
         except:
