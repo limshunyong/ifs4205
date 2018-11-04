@@ -838,12 +838,14 @@ def get_patient_data(request):
                     minio_filename = d.minio_filename
                     therapist_id = d.therapist_id
 
-                    obj_link = get_object(minio_filename, 86400)
+                    if minio_filename is None or minio_filename == "":
+                        link = "No minio link associated with the file"
+                    else:
+                        obj_link = get_object(minio_filename, 86400)
+                        link = resolve_minio_link(obj_link)
 
-                    link = resolve_minio_link(obj_link)
 
-
-                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id, link])
+                    writer.writerow([id, title, description, date, patient_id, datatype, minio_filename, therapist_id,link])
                 return response
 
             else:
@@ -887,9 +889,11 @@ def get_patient_data(request):
                             minio_filename = i.minio_filename
                             therapist_id = i.therapist_id
 
-                            obj_link = get_object(minio_filename, 86400)
-
-                            link = resolve_minio_link(obj_link)
+                            if minio_filename is None or minio_filename == "":
+                                link = "No minio link associated with the file"
+                            else:
+                                obj_link = get_object(minio_filename, 86400)
+                                link = resolve_minio_link(obj_link)
 
                             writer.writerow(
                                 [data_id, title, description, date, patient_id, datatype, minio_filename, therapist_id, link])
