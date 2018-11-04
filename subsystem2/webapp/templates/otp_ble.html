@@ -103,45 +103,46 @@
 		  const writeCharacteristicUUID = parseInt('0x2222');
 		  let encoder = new TextEncoder('utf-8');
 		  let readCnt = 0;
-		  //let n1; // will be retrieved from tag and sent to server in phase 1
-		  let n2 = encoder.encode("{{challenge}}"); // recieved from server and sent to tag  along with n1Sig in phase 2
-		  //let n1Sig; // signed by server and sent to tag along with n2 in phase 2
+			//let n1; // will be retrieved from tag and sent to server in phase 1
+			let challenge = {{challenge|safe}};
+			let n2 = Uint8Array.from(challenge); // recieved from server and sent to tag  along with n1Sig in phase 2
+			//let n1Sig; // signed by server and sent to tag along with n2 in phase 2
 		  let n2Sig; // recieved from tag in phase 3
 
 		  
 		  try {
-			// Select tag from popup
-			log('Requesting Bluetooth Device...');
-			bluetoothDevice = await navigator.bluetooth.requestDevice({filters: [{services: [mainServiceUUID]}]});
-			const server = await bluetoothDevice.gatt.connect();
-			const mainService = await server.getPrimaryService(mainServiceUUID);
-			// Get all characteristics.
-			log('Connected to device...');	
-			const readChar = await mainService.getCharacteristic(readCharacteristicUUID);
-			const writeChar = await mainService.getCharacteristic(writeCharacteristicUUID);
-			
-			// n1 = await readChar.readValue();
-			
-			// Code to send n1 to server for signing and receiving n1 signature and n2 nonce from server
-			// split n1 signaute into 4 packets with 1st bit signal to prepare for sending by BLE
-			
-			// place notification on readChar to recieve n2Sig automatically
-			await readChar.startNotifications();
-			readChar.addEventListener('characteristicvaluechanged', handleReadDataChanged);
-			
-			// Send n1 signature that has been split into 4 packets to tag
-			//await writeChar.writeValue(n1Sig1);
-			//await writeChar.writeValue(n1Sig2);
-			//await writeChar.writeValue(n1Sig3);
-			//await writeChar.writeValue(n1Sig4);
+				// Select tag from popup
+				log('Requesting Bluetooth Device...');
+				bluetoothDevice = await navigator.bluetooth.requestDevice({filters: [{services: [mainServiceUUID]}]});
+				const server = await bluetoothDevice.gatt.connect();
+				const mainService = await server.getPrimaryService(mainServiceUUID);
+				// Get all characteristics.
+				log('Connected to device...');	
+				const readChar = await mainService.getCharacteristic(readCharacteristicUUID);
+				const writeChar = await mainService.getCharacteristic(writeCharacteristicUUID);
+				
+				// n1 = await readChar.readValue();
+				
+				// Code to send n1 to server for signing and receiving n1 signature and n2 nonce from server
+				// split n1 signaute into 4 packets with 1st bit signal to prepare for sending by BLE
+				
+				// place notification on readChar to recieve n2Sig automatically
+				await readChar.startNotifications();
+				readChar.addEventListener('characteristicvaluechanged', handleReadDataChanged);
+				
+				// Send n1 signature that has been split into 4 packets to tag
+				//await writeChar.writeValue(n1Sig1);
+				//await writeChar.writeValue(n1Sig2);
+				//await writeChar.writeValue(n1Sig3);
+				//await writeChar.writeValue(n1Sig4);
 
-			// Send n2 challenge recieved from server to tag
-			await writeChar.writeValue(n2);
-			// send code to tag to start verifying n1 signature and sign n2
-			let startVerif = encoder.encode('00'); 
-			await writeChar.writeValue(startVerif);
+				// Send n2 challenge recieved from server to tag
+				await writeChar.writeValue(n2);
+				// send code to tag to start verifying n1 signature and sign n2
+				let startVerif = encoder.encode('00'); 
+				await writeChar.writeValue(startVerif);
 		  } catch(error) {
-			//log('Argh! ' + error);
+				log('Argh! ' + error);
 		  }
 		  
 		  function handleReadDataChanged(event) { // reacCnt is number of recieved n2Sig pieces in order
