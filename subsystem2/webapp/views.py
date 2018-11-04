@@ -51,6 +51,7 @@ from datetime import datetime
 from statistics import mean
 
 TOKEN = os.environ.get('SEC_TOKEN')
+TOKEN_UPLOAD = os.environ.get('SEC_TOKEN_UPLOAD')
 
 MAPPING = {
     'image/jpg': HealthData.IMAGE_DATA,
@@ -913,7 +914,7 @@ def get_patient_data(request):
 def upload_ext_patient(request):
 
     if request.method == 'POST':
-        if request.POST['stoken'] != TOKEN:
+        if request.POST['stoken'] != TOKEN_UPLOAD:
             return HttpResponseForbidden("Invalid Token")
 
         name = request.FILES['file'].name
