@@ -20,10 +20,123 @@
 				{{ upload_data_form.media }}
 				{{ upload_data_form.as_p }}
 				{% csrf_token %}
-				<button type="submit" form="upload-form" class="btn btn-primary btn-block">Submit</button>
+				<input type="hidden" name="otp_device" id="otp_device" value="{{ device_id }}"/>
+				<input type="hidden" name="hash_signature" id="hash_signature" value=""/>
+				<input type="hidden" name="file_hash" id="file_hash" value=""/>
+				<button type="button" onclick="BLEtagInterface()" form="upload-form" class="btn btn-primary btn-block">Submit</button>
 			</div>
 		</form>
 	</div>
 </div>
+<script>
+	async function hashFile(file) {
+		// generate a new FileReader object
+		var reader = new FileReader();
+		
+		reader.onload = async function(e) {
+			var fileBuffer = event.target.result
+			hashBuffer = await crypto.subtle.digest('SHA-1', fileBuffer);
+			
+			// convert ArrayBuffer to Array
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			// convert bytes to hex string
+			const hashHex = hashArray.map(b => ('00' + b.toString(16)).slice(-2)).join('');
+			// insert hex string into file_hash text field to submit with form
+			var hashField = document.getElementById("file_hash");
+			hashField.value = hashHex;
+		}
+		
+		// when the file is read it triggers the onload event above.
+		reader.readAsArrayBuffer(file);
+	}
 
+	document.getElementById('id_file').onchange = function(e) {hashFile(e.srcElement.files[0])};
+
+	var hashBuffer
+	var bluetoothDevice;
+	var bluetoothDevice;
+
+	async function BLEtagInterface() {
+		const mainServiceUUID = parseInt('0x2220');
+		const readCharacteristicUUID = parseInt('0x2221');
+		const writeCharacteristicUUID = parseInt('0x2222');
+		let encoder = new TextEncoder('utf-8');
+		let readCnt = 0;
+		let n2 = hashBuffer; 
+		let n2Sig; // recieved from tag in phase 3
+
+
+		try {
+			// Select tag from popup
+			bluetoothDevice = await navigator.bluetooth.requestDevice({filters: [{services: [mainServiceUUID]}]});
+			const server = await bluetoothDevice.gatt.connect();
+			const mainService = await server.getPrimaryService(mainServiceUUID);
+			
+			// Get all characteristics.
+			const readChar = await mainService.getCharacteristic(readCharacteristicUUID);
+			const writeChar = await mainService.getCharacteristic(writeCharacteristicUUID);
+
+			// place notification on readChar to recieve n2Sig automatically
+			await readChar.startNotifications();
+			readChar.addEventListener('characteristicvaluechanged', handleReadDataChanged);
+
+			// Send n2 challenge recieved from server to tag
+			await writeChar.writeValue(n2);
+			// send code to tag to start verifying n1 signature and sign n2
+			let startVerif = encoder.encode('00');
+			await writeChar.writeValue(startVerif);
+		} catch(error) {
+			//log('Argh! ' + error);
+		}
+
+		function handleReadDataChanged(event) { // reacCnt is number of recieved n2Sig pieces in order
+			readCnt++;
+			let readData = event.target.value;
+
+			// read in recieved BLE data, convert to Uint8Array
+			if (readCnt == 1) {
+				n2Sig = new Uint8Array(20);
+				for (i = 0; i < 20; i++) {
+					n2Sig[i] = readData.getUint8(i);
+				}
+			} else if (readCnt == 4) {
+				var recievedUint8 = new Uint8Array(4);
+				for (i = 0; i < 4; i++) {
+					recievedUint8[i] = readData.getUint8(i);
+				}
+				var newArray = new Uint8Array(n2Sig.length + recievedUint8.length);
+				newArray.set(n2Sig);
+				newArray.set(recievedUint8, n2Sig.length);
+				n2Sig = newArray;
+			} else {
+				var recievedUint8 = new Uint8Array(20);
+				for (i = 0; i < 20; i++) {
+					recievedUint8[i] = readData.getUint8(i);
+				}
+				var newArray = new Uint8Array(n2Sig.length + recievedUint8.length);
+				newArray.set(n2Sig);
+				newArray.set(recievedUint8, n2Sig.length);
+				n2Sig = newArray;
+			}
+
+			if (readCnt == 4) {
+				// send fully collected n2Sig to server for auth
+				bluetoothDevice.gatt.disconnect(); // disconnect tag to end interactions
+				n2Char = _arrayBufferToBase64(n2Sig);
+				var tokenBox = document.getElementById("hash_signature");
+				tokenBox.value = n2Char;
+				document.getElementById("upload-form").submit();
+			}
+		}
+		function _arrayBufferToBase64( buffer ) {
+			var binary = '';
+			var bytes = new Uint8Array( buffer );
+			var len = bytes.byteLength;
+			for (var i = 0; i < len; i++) {
+				binary += String.fromCharCode( bytes[ i ] );
+			}
+			return window.btoa( binary );
+		}
+	}
+</script>
 {% endblock %}
