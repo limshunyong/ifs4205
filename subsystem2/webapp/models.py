@@ -184,6 +184,8 @@ class HealthData(models.Model):
     date = models.DateTimeField('created on', auto_now_add=True)
     file_hash = models.CharField(max_length=100, blank=True, default='')
     signature = models.CharField(max_length=100, blank=True, default='')
+    otp_device = models.CharField(max_length=100, blank=True, default='')
+    is_verified = models.BooleanField(blank=True, null=True, default=None)
 
     def __str__(self):
         if self.therapist:

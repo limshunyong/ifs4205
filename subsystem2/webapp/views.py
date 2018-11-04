@@ -356,6 +356,23 @@ def therapist_list_patient_record_view(request, patient_id=None, type=None):
         records = HealthData.objects.filter(patient_id=patient_id, data_type=type)
     else:
         records = HealthData.objects.filter(patient_id=patient_id)
+    # verify signature
+    for r in records:
+        if r.otp_device != '':
+            device = otp.models.Device.from_persistent_id(r.otp_device)
+            if device is not None:
+                verifying_key = device.bin_key
+                try:
+                    verifying_key.verify(r.signature, r.file_hash.encode('ascii'), encoding="base64")
+                    r.is_verified = True
+                except:
+                    r.is_verified = False
+            else:
+                r.is_verified = None
+        else:
+            r.is_verified = None
+        r.save()
+        
 
     therapist_patients = Patient.objects.filter(isapatientof__therapist=therapist)
     selected_patient = Patient.objects.get(id=patient_id)
@@ -461,12 +478,19 @@ def therapist_upload_data(request):
     if request.method == 'GET':
         context = {
             'user': request.user,
-            'upload_data_form': UploadDataForm(therapist_id=therapist.pk)
+            'upload_data_form': UploadDataForm(therapist_id=therapist.pk),
+            'device_id': next(otp.devices_for_user(request.user)).persistent_id
         }
         return render(request, 'therapist_upload.html', context)
 
     elif request.method == 'POST':
         form = UploadDataForm(request.POST, request.FILES, therapist_id=therapist.pk)
+        file_hash = request.POST['file_hash']
+        hash_signature = request.POST['hash_signature']
+        otp_device = request.POST['otp_device'] if 'otp_device' in request.POST else ''
+        print('file hash', file_hash)
+        print('signature', hash_signature)
+        print('otp_device', otp_device)
 
         if form.is_valid():
             file = form.cleaned_data['file']
@@ -560,7 +584,10 @@ def therapist_upload_data(request):
                 data_type=data_type,
                 title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
                 description=form.cleaned_data['description'],
-                minio_filename=minio_filename
+                minio_filename=minio_filename,
+                file_hash=file_hash,
+                signature=hash_signature,
+                otp_device=otp_device
             )
 
             patient_data.save()
@@ -581,12 +608,19 @@ def patient_upload_data(request):
     if request.method == 'GET':
         context = {
             'user': request.user,
-            'upload_data_form': UploadPatientDataForm()
+            'upload_data_form': UploadPatientDataForm(),
+            'device_id': next(otp.devices_for_user(request.user)).persistent_id
         }
         return render(request, 'patient_upload.html', context)
 
     elif request.method == 'POST':
         form = UploadPatientDataForm(request.POST, request.FILES)
+        file_hash = request.POST['file_hash']
+        hash_signature = request.POST['hash_signature']
+        otp_device = request.POST['otp_device'] if 'otp_device' in request.POST else ''
+        print('file hash', file_hash)
+        print('signature', hash_signature)
+        print('otp_device', otp_device)
 
         if form.is_valid():
             file = form.cleaned_data['file']
@@ -665,13 +699,16 @@ def patient_upload_data(request):
             # No file for Document / Diagnosis / Height / Weight
             else:
                 minio_filename = None
-            patient_data = HealthData(
-                        patient=Patient.objects.get(pk=patient_id),
-                        data_type=data_type,
-                        title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
-                        description=form.cleaned_data['description'],
-                        minio_filename=minio_filename
-                    )
+                patient_data = HealthData(
+                    patient=Patient.objects.get(pk=patient_id),
+                    data_type=data_type,
+                    title=file.name if file else str(datetime.now().strftime("%Y-%m-%d %H:%M")),
+                    description=form.cleaned_data['description'],
+                    minio_filename=minio_filename,
+                    file_hash=file_hash,
+                    signature=hash_signature,
+                    otp_device=otp_device.persistent_id
+                )
             patient_data.save()
             messages.success(request, 'File upload successful')
 
