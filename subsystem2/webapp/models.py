@@ -1,4 +1,5 @@
 import random
+import ast
 import ed25519
 from datetime import date
 from binascii import unhexlify
@@ -243,12 +244,14 @@ class BLEOTPDevice(Device):
         """
         try:
             verifying_key = self.bin_key
+            challenge_byte = bytes(ast.literal_eval(self.otp_challenge))
             print("========= BLEOPTDevice:verify_token() ============")
             print("Using verifying key", str(verifying_key.to_ascii(encoding="hex")))
             print("Using signature:", sig)
             print("Original challenge:", self.otp_challenge)
+            print("Challenge string:", challenge_byte)
             print("Encoding: base64")
-            verifying_key.verify(sig, self.otp_challenge.encode('ascii'), encoding="base64")
+            verifying_key.verify(sig, challenge_byte, encoding="base64")
             print("Signature Passed")
         except ed25519.BadSignatureError:
             print("Signature Failed")

@@ -1,4 +1,5 @@
 import json
+import ast
 import csv
 import io
 import codecs
@@ -14,6 +15,7 @@ import pytz
 import ed25519
 import magic
 import requests
+import base64
 from urllib3.exceptions import MaxRetryError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, Http404, HttpResponseRedirect, HttpResponse, JsonResponse
@@ -232,21 +234,24 @@ def otp_ble_view(request):
     if device_id is None or device is None:
         error_msg = 'otp_device_does_not_exist'
 
-    msg_to_be_signed = get_random_string(length=1024)
+    msg_to_be_signed = generate_challenge()
     print(device_id, device)
-    device.otp_challenge = msg_to_be_signed
+    device.otp_challenge = str(msg_to_be_signed)
     device.save()
 
-    # TODO remove test code below
-    # signing_key_str = "b2fac486cbc234ed4558788ad4c1c0420472cf7765a3aefeaeed7de049acb14e"
+    #TODO remove test code below
+    # challenge_byte = bytes(msg_to_be_signed)
+    # place the private key array here
+    # a = [];
+    # signing_key_str = ''.join(["{:02x}".format(x) for x in a])
     # print('verifying_key', device.key)
     # print('signing_key', signing_key_str)
     # verifying_key = ed25519.VerifyingKey(device.key.encode('ascii'), encoding='hex')
     # signing_key = ed25519.SigningKey(signing_key_str.encode('ascii'), encoding="hex")
-    # sig = signing_key.sign(msg_to_be_signed.encode('ascii'), encoding="base64")
-    # print('challenge', msg_to_be_signed)
+    # sig = signing_key.sign(challenge_byte, encoding="base64")
+    # print('challenge', challenge_byte)
     # print('signature', sig)
-    # verifying_key.verify(sig, msg_to_be_signed.encode('ascii'), encoding="base64")
+    # verifying_key.verify(sig, challenge_byte, encoding="base64")
 
     context = {
         'error_msg': error_msg,
@@ -254,6 +259,18 @@ def otp_ble_view(request):
         'device_id': request.POST['device_id']
     }
     return render(request, 'otp_ble.html', context)
+
+
+def generate_challenge():
+    """returns a 160-bit challenge, encode in base64 format"""
+    split_hex = lambda x: [x[i:i+8] for i in range(0, len(x), 8)]
+    rand_bits = random.getrandbits(160)
+    bin_array = split_hex(bin(rand_bits)[2:])
+    #challenge = base64.b64encode(''.join([chr(int(x, 2)) for x in bin_array]).encode())
+    print('rand_bits', rand_bits)
+    print('split_hex', bin_array)
+    print('bin', [int(x, 2) for x in bin_array])
+    return [int(x, 2) for x in bin_array]
 
 
 def logout_view(request):
@@ -267,14 +284,14 @@ def keygen_view(request):
     private_key, public_key = ed25519.create_keypair()
     private_key_str = private_key.to_ascii(encoding="hex").decode('ascii')
     public_key_str = public_key.to_ascii(encoding="hex").decode('ascii')
-    print(public_key_str)
-    print(split_hex(public_key_str))
-    arr_uint8 = [int(x, 16) for x in split_hex(public_key_str)]
+    print(private_key_str)
+    print(split_hex(private_key_str))
+    arr_uint8 = [int(x, 16) for x in split_hex(private_key_str)]
     print(arr_uint8)
-    public_key_arr = '{' + ','.join([str(x) for x in arr_uint8]) + '}'
+    private_key_arr = '{' + ','.join([str(x) for x in arr_uint8]) + '}'
     context = {
         'public_key': public_key_str,
-        'private_key': public_key_arr
+        'private_key': private_key_arr
     }
     return render(request, 'keygen.html', context)
 
