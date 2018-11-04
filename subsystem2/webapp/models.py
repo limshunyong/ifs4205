@@ -23,8 +23,8 @@ class Patient(models.Model):
     MALE = 'MALE'
     FEMALE = 'FEMALE'
     SEX = (
-        (MALE, 'MALE'),
-        (FEMALE, 'FEMALE')
+        (MALE, 'Male'),
+        (FEMALE, 'Female')
     )
     O_NEGATIVE = "ON"
     O_POSITIVE = "OP"
