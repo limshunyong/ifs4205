@@ -6,7 +6,7 @@ from subsystem2.settings.base import *
 SECRET_KEY = 'hvq6e3ubr-yu%s=42#o8-oh*)=z5obloiv!o+ij#$q3bb@km2c'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["127.0.0.1", "ifs4205-t2-2-i.comp.nus.edu.sg", "ifs4205-t2-2.comp.nus.edu.sg"]
 
