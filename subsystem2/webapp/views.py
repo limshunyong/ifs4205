@@ -121,6 +121,11 @@ def is_researcher(user):
     except:
         return False
 
+# user_passes_test helper functions
+def is_admin(user):
+    return user.is_superuser
+
+
 def login_view(request, next=None):
     next_url = request.GET.get('next')
     print(request.user, request.user.is_authenticated, request.user.is_verified())
@@ -279,7 +284,8 @@ def logout_view(request):
     return redirect("/web/account/login/")
 
 
-# TODO only admin can view
+@login_required
+@user_passes_test(is_admin)
 def keygen_view(request):
     split_hex = lambda x: [x[i:i+2] for i in range(0, len(x), 2)]
     private_key, public_key = ed25519.create_keypair()
